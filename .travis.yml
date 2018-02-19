@@ -1,0 +1,10 @@
+language: node_js
+node_js:
+  - "6"
+script:
+  - npm run clean
+  - npm run build
+  - npm run test
+branches:
+  only:
+    - master

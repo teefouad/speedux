@@ -1,0 +1,67 @@
+{
+  "name": "speedux",
+  "version": "1.0.3",
+  "description": "An opinionated library that allows you to create actions and reducers for Redux, automatically. Speedux reduces the amount of code that needs to be written in a Redux application giving you peace of mind and more time to code the important stuff.",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "npm run build:commonjs && npm run build:umd && npm run build:umd:min",
+    "build:commonjs": "cross-env BABEL_ENV=commonjs babel src --out-dir lib",
+    "build:umd": "cross-env BABEL_ENV=commonjs NODE_ENV=development webpack",
+    "build:umd:min": "cross-env BABEL_ENV=commonjs NODE_ENV=production webpack",
+    "clean": "rimraf lib dist",
+    "lint": "eslint src test",
+    "posttest": "npm run lint",
+    "prepublish": "npm run clean && npm run test && npm run build",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/teefouad/speedux.git"
+  },
+  "files": [
+    "lib",
+    "src",
+    "dist"
+  ],
+  "keywords": [
+    "react",
+    "reactjs",
+    "flux",
+    "redux",
+    "action",
+    "reducer",
+    "generator",
+    "javascript",
+    "nodejs"
+  ],
+  "author": "Mostafa <tee.fouad@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/teefouad/speedux/issues"
+  },
+  "homepage": "https://github.com/teefouad/speedux#readme",
+  "dependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.0",
+    "babel-eslint": "^8.2.2",
+    "babel-loader": "^7.1.2",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-stage-0": "^6.24.1",
+    "cross-env": "^5.1.3",
+    "react": "^16.2.0",
+    "react-redux": "^5.0.7",
+    "redux": "^3.7.2",
+    "redux-thunk": "^2.2.0"
+  },
+  "devDependencies": {
+    "babel-jest": "^22.4.1",
+    "eslint": "^4.18.0",
+    "eslint-config-airbnb": "^16.1.0",
+    "eslint-plugin-import": "^2.8.0",
+    "eslint-plugin-jsx-a11y": "^6.0.3",
+    "eslint-plugin-react": "^7.7.0",
+    "jest": "^22.4.0",
+    "rimraf": "^2.6.2",
+    "webpack": "^3.11.0"
+  }
+}
