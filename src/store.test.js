@@ -1,17 +1,17 @@
-import storeInstance, { Store } from './store';
+import storeInstance, { StoreManager } from './store';
 
-describe('Store.js', () => {
+describe('store.js', () => {
   beforeEach(() => {
-    Store.removeAllReducers();
-    Store.buildInstance();
+    StoreManager.removeAllReducers();
+    StoreManager.buildInstance();
   });
 
   it('should have a getInstance method', () => {
-    expect(Store.getInstance).toBeInstanceOf(Function);
+    expect(StoreManager.getInstance).toBeInstanceOf(Function);
   });
 
   it('should return a store instance when calling getInstance()', () => {
-    const store = Store.getInstance();
+    const store = StoreManager.getInstance();
     expect(store).not.toBeUndefined();
     expect(store).toMatchObject({
       dispatch: expect.any(Function),
@@ -21,39 +21,39 @@ describe('Store.js', () => {
   });
 
   it('should return the same instance every time', () => {
-    const storeA = Store.getInstance();
-    const storeB = Store.getInstance();
+    const storeA = StoreManager.getInstance();
+    const storeB = StoreManager.getInstance();
     expect(storeA).toBe(storeB);
   });
 
   it('should be able to build a new store instance', () => {
-    const storeA = Store.getInstance();
-    Store.buildInstance();
-    const storeB = Store.getInstance();
+    const storeA = StoreManager.getInstance();
+    StoreManager.buildInstance();
+    const storeB = StoreManager.getInstance();
     expect(storeA).not.toBe(storeB);
   });
 
   it('should be able to add a reducer', () => {
     const reducer = jest.fn();
-    Store.addReducer('test', reducer);
-    expect(Store.reducers).toHaveProperty('test', reducer);
+    StoreManager.addReducer('test', reducer);
+    expect(StoreManager.reducers).toHaveProperty('test', reducer);
   });
 
   it('should be able to remove a reducer', () => {
-    Store.reducers.test = jest.fn();
-    Store.removeReducer('test');
-    expect(Store.reducers.test).toBeUndefined();
+    StoreManager.reducers.test = jest.fn();
+    StoreManager.removeReducer('test');
+    expect(StoreManager.reducers.test).toBeUndefined();
   });
 
   it('should be able to remove all reducers', () => {
-    Store.addReducer('testA', jest.fn());
-    Store.addReducer('testB', jest.fn());
-    Store.removeAllReducers();
-    expect(Store.reducers).toEqual({});
+    StoreManager.addReducer('testA', jest.fn());
+    StoreManager.addReducer('testB', jest.fn());
+    StoreManager.removeAllReducers();
+    expect(StoreManager.reducers).toEqual({});
   });
 
   it('should be able to create a valid root reducer', () => {
-    const rootReducer = Store.getRootReducer();
+    const rootReducer = StoreManager.getRootReducer();
     const state = { $_foo: {} };
     const newState = rootReducer(state);
     expect(rootReducer).toBeInstanceOf(Function);
@@ -63,9 +63,9 @@ describe('Store.js', () => {
   it('should call all added reducers when an action is dispatched', () => {
     const reducer = jest.fn();
     reducer.mockReturnValue({});
-    Store.addReducer('test', reducer);
-    Store.update();
-    Store.getInstance().dispatch({ type: 'FOO' });
+    StoreManager.addReducer('test', reducer);
+    StoreManager.update();
+    StoreManager.getInstance().dispatch({ type: 'FOO' });
     expect(reducer).toHaveBeenCalled();
   });
 
@@ -79,9 +79,9 @@ describe('Store.js', () => {
 
   it('should allow using middlewares', () => {
     const middleware = jest.fn(() => next => action => next(action));
-    Store.useMiddleware(middleware);
-    Store.buildInstance();
-    Store.getInstance().dispatch({ type: 'FOO' });
+    StoreManager.useMiddleware(middleware);
+    StoreManager.buildInstance();
+    StoreManager.getInstance().dispatch({ type: 'FOO' });
     expect(middleware).toHaveBeenCalled();
   });
 });

@@ -16,10 +16,10 @@ let storeInstance;
 
 /**
  * This is not the actual store. This is a wrapper object that manages
- * the Redux store instance. Use `Store.getInstance()` to get a reference
+ * the Redux store instance. Use `StoreManager.getInstance()` to get a reference
  * to the Redux store.
  */
-export const Store = {
+export const StoreManager = {
   /**
    * An object that is used as a map to store references to registered
    * reducers. This object is used by `getRootReducer` to create the
@@ -41,7 +41,7 @@ export const Store = {
    * @param  {Function} reducer   Reducer function.
    */
   addReducer(name, reducer) {
-    Store.reducers[name] = reducer;
+    StoreManager.reducers[name] = reducer;
   },
 
   /**
@@ -49,14 +49,14 @@ export const Store = {
    * @param  {String}   key   Reducer unique identifier key.
    */
   removeReducer(name) {
-    delete Store.reducers[name];
+    delete StoreManager.reducers[name];
   },
 
   /**
    * Unregisters all reducer functions.
    */
   removeAllReducers() {
-    Object.keys(Store.reducers).forEach(name => Store.removeReducer(name));
+    Object.keys(StoreManager.reducers).forEach(name => StoreManager.removeReducer(name));
   },
 
   /**
@@ -66,7 +66,7 @@ export const Store = {
   getRootReducer() {
     return combineReducers({
       $_foo: (state = {}) => state, // default reducer
-      ...Store.reducers,
+      ...StoreManager.reducers,
     });
   },
 
@@ -76,7 +76,7 @@ export const Store = {
    */
   getInstance() {
     if (!storeInstance) {
-      Store.buildInstance();
+      StoreManager.buildInstance();
     }
 
     return storeInstance;
@@ -87,8 +87,8 @@ export const Store = {
    */
   buildInstance() {
     storeInstance = createStore(
-      Store.getRootReducer(),
-      compose(...Store.middleWares),
+      StoreManager.getRootReducer(),
+      compose(...StoreManager.middleWares),
     );
   },
 
@@ -97,7 +97,7 @@ export const Store = {
    * removing reducers.
    */
   update() {
-    return storeInstance.replaceReducer(Store.getRootReducer());
+    return storeInstance.replaceReducer(StoreManager.getRootReducer());
   },
 
   /**
@@ -105,11 +105,11 @@ export const Store = {
    * @param {Function} middleWare Middleware function to use
    */
   useMiddleware(middleWare) {
-    return Store.middleWares.unshift(applyMiddleware(middleWare));
+    return StoreManager.middleWares.unshift(applyMiddleware(middleWare));
   },
 };
 
 /**
  * Default export.
  */
-export default Store.getInstance();
+export default StoreManager.getInstance();

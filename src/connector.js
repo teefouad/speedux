@@ -5,13 +5,41 @@ import { Component } from 'react';
 import { bindActionCreators } from 'redux';
 import { connect as reduxConnect } from 'react-redux';
 
-const Connector = {
+/**
+ * This is a wrapper object that allows connecting components to a Redux store.
+ * First, set a reference to a StorManage object using `Connector.use()` then
+ * use `Connector.connect()`.
+ */
+export const Connector = {
+  /**
+   * Holds a refernece to a StoreManager object. Set this with `Connector.use()` method.
+   */
   storeManager: null,
 
+  /**
+   * Allows setting a reference to a StoreManager object.
+   * @param {Object}  storeManager Reference to a StoreManager object.
+   */
   use: (storeManager) => {
     Connector.storeManager = storeManager;
   },
 
+  /**
+   * Connects a component to the Redux store and injects its state and actions via the props.
+   * It takes two arguments, the component to be connected and a configuration object then
+   * returns the connected component.
+   * @param   {Class}   component Reference to the class of the component to be connected
+   *                              to the store.
+   * @param   {Object}  config    Configuration object that contains the following keys:
+   *                                - reducer         Reference to the component reducer function.
+   *                                - actions         Reference to the actions object. This is an
+   *                                                  object of action creator functions.
+   *                                - stateKey        Namespace that will be used to pass component
+   *                                                  state via props.
+   *                                - actionsKey      Namespace that will be used to pass component
+   *                                                  actions via props.
+   * @return  {Object}            The connected component.
+   */
   connect: (component, config = {}) => {
     if (typeof component !== 'function' && Object.getPrototypeOf(component) !== Component) {
       throw new Error('Expected the first parameter to be a pure function or a valid React component class.');
