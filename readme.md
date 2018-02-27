@@ -384,9 +384,9 @@ export default createModule('dataLogger', initialState, function({ createAction,
 
 &nbsp;
 
-### registerReducer(reducerKey, reducerFunction)
+### addReducer(reducerKey, reducerFunction)
 
-Allows registering a reducer function to be used when creating the root reducer of the store. Returns a boolean that indicates whether the reducer function was successfully registered or not.
+Allows registering a reducer function to be used when creating the root reducer of the store.
 
 | Parameter | Type | Description |
 | :----- | :----- | :----- |
@@ -396,9 +396,9 @@ Allows registering a reducer function to be used when creating the root reducer 
 **Example:**
 ```javascript
 import { routerReducer } from 'react-router-redux';
-import { registerReducer } from 'speedux';
+import { addReducer } from 'speedux';
 
-registerReducer('router', routerReducer);
+addReducer('router', routerReducer);
 ```
 
 &nbsp;
@@ -470,14 +470,14 @@ import { render } from 'react-dom';
 import { Provider } from 'react-redux';
 import { ConnectedRouter, routerReducer, routerMiddleware } from 'react-router-redux';
 import createHistory from 'history/createBrowserHistory';
-import { store, registerReducer, useMiddleware } from 'speedux';
+import { store, addReducer, useMiddleware } from 'speedux';
 
 import Main from './Main';
 
 const history = createHistory();
 
-// register router reducer
-registerReducer('router', routerReducer);
+// add router reducer
+addReducer('router', routerReducer);
 
 // use the routing middleware
 useMiddleware(routerMiddleware(history));
