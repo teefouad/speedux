@@ -2,7 +2,7 @@ import React from 'react';
 import renderer from 'react-test-renderer';
 import configureStore from 'redux-mock-store';
 
-import Connector from './connector';
+import { Connector } from './connector';
 
 describe('connect.js', () => {
   const mockStore = configureStore();

@@ -42,16 +42,6 @@ export const getArgNames = (func) => {
 };
 
 /**
- * Converts a Snake_Case string to camelCase format.
- * @param   {String}  str String to be converted.
- * @return  {String}      The converted string.
- */
-export const snake2CamelCase = (str) => {
-  const lowercaseStr = str.toLowerCase();
-  return lowercaseStr.replace(/_\w/g, w => w[1].toUpperCase());
-};
-
-/**
  * Returns type of a given object.
  * @param   {Any}     obj   Object to inspect for type.
  * @return  {String}        Type of the given object.
@@ -89,6 +79,11 @@ export const findPropInObject = (obj, pathStr, ...replaceWith) => {
     // de-reference the value if it's an array
     if (type === 'array') {
       currentPath[prop] = [...currentPath[prop]];
+    }
+
+    // create it if it doesn't exist
+    if (type === 'undefined' && replaceWith.length !== 0) {
+      currentPath[prop] = {};
     }
 
     if (i < path.length - 1) {
