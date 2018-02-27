@@ -9,6 +9,13 @@ import {
 } from 'redux';
 
 /**
+ * Creates a middleware function that is used to enable Redux devTools
+ * in the browser.
+ * @type {Function}
+ */
+const devTools = compose(window.devToolsExtension ? window.devToolsExtension() : foo => foo);
+
+/**
  * Reference to hold the Redux store instance.
  * @type {Object}
  */
@@ -33,7 +40,7 @@ export const StoreManager = {
    * Use `useMiddleware` method to add other middleware functions to this list.
    * @type {Array}
    */
-  middleWares: [],
+  middleWares: [devTools],
 
   /**
    * Registers a reducer function.
