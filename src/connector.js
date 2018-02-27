@@ -10,7 +10,7 @@ import { connect as reduxConnect } from 'react-redux';
  * First, set a reference to a StorManage object using `Connector.use()` then
  * use `Connector.connect()`.
  */
-export const Connector = {
+const Connector = {
   /**
    * Holds a refernece to a StoreManager object. Set this with `Connector.use()` method.
    */
