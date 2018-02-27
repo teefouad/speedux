@@ -1,4 +1,4 @@
-import storeInstance, { StoreManager } from './store';
+import storeInstance, { StoreManager } from '../src/store';
 
 describe('store.js', () => {
   beforeEach(() => {

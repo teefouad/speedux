@@ -1,7 +1,7 @@
 import thunkMiddleware from 'redux-thunk';
 import configureStore from 'redux-mock-store';
 
-import Module from './module';
+import Module from '../src/module';
 
 const mockStore = configureStore([thunkMiddleware]);
 
