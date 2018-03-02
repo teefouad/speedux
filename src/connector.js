@@ -32,8 +32,11 @@ const Connector = {
    *                              to the store.
    * @param   {Object}  config    Configuration object that contains the following keys:
    *                                - reducer         Reference to the component reducer function.
-   *                                - actions         Reference to the actions object. This is an
-   *                                                  object of action creator functions.
+   *                                - actions         Reference to the actions object. This is a
+   *                                                  hash table of action creator functions.
+   *                                - sagas           Reference to the sagas object. This is a
+   *                                                  hash table of generator functions, each
+   *                                                  represents a saga.
    *                                - stateKey        Namespace that will be used to pass component
    *                                                  state via props.
    *                                - actionsKey      Namespace that will be used to pass component
@@ -41,14 +44,17 @@ const Connector = {
    * @return  {Object}            The connected component.
    */
   connect: (component, config = {}) => {
+    // the passed component must be a valid React component class or a function
     if (typeof component !== 'function' && Object.getPrototypeOf(component) !== Component) {
       throw new Error('Expected the first parameter to be a pure function or a valid React component class.');
     }
 
+    // the passed configuration must be an object
     if (typeof config !== 'object') {
       throw new Error('Expected the second parameter to be a valid object.');
     }
 
+    // Connector.use() must be called with a valid StoreManager before calling connect()
     if (Connector.storeManager === null) {
       throw new Error('Expected a valid StoreManager to be used before calling `connect`.');
     }
