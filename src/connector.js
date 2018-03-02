@@ -59,6 +59,9 @@ const Connector = {
     // default value for the actions object is an empty object (no actions).
     const actions = config.actions || {};
 
+    // default value for the sagas object is an empty object (no sagas).
+    const sagas = config.sagas || {};
+
     // default value for the stateKey is the component display name or function name
     // (component is stateless)
     const stateKey = (
@@ -113,8 +116,8 @@ const Connector = {
     Connector.storeManager.update();
 
     // run each saga
-    Object.keys(config.sagas).forEach((key) => {
-      Connector.storeManager.runSaga(config.sagas[key]);
+    Object.keys(sagas).forEach((key) => {
+      Connector.storeManager.runSaga(sagas[key]);
     });
 
     return connectedComponent;

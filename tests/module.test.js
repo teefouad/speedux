@@ -98,75 +98,11 @@ describe('module.js', () => {
   it('should have a reference to a reducer function that returns a different state for known actions', () => {
     const state = mockState();
     const module = new Module('test', state, mockStore({ test: state }));
-    module.createAction('change_foo', function callback() {
-      this.setState({
-        foo: 'newBaz',
-      });
-    });
+    module.createAction('change_foo', () => ({
+      foo: 'newBaz',
+    }));
     const newState = module.reducer(state, module.actions.changeFoo());
     expect(newState).toHaveProperty('foo', 'newBaz');
-  });
-
-  it('should have a setState method', () => {
-    const module = new Module();
-    expect(module).toHaveProperty('setState', expect.any(Function));
-  });
-
-  it('should have a reference to an empty state fragments hash table by default', () => {
-    const module = new Module();
-    expect(module).toHaveProperty('stateFragments', {});
-  });
-
-  it('should create a state fragment object after calling setState()', () => {
-    const module = new Module();
-
-    module.setState({
-      foo: 'newBaz',
-    }, { type: '@@test/CHANGE_FOO' });
-
-    expect(module.stateFragments['@@test/CHANGE_FOO']).toEqual({
-      foo: 'newBaz',
-    });
-  });
-
-  it('should be able use a string that uses dot notation dot notation with setState()', () => {
-    const module = new Module();
-
-    module.setState({
-      'nested.props.foo': 'newBaz',
-    }, { type: '@@test/CHANGE_FOO' });
-
-    expect(module.stateFragments['@@test/CHANGE_FOO']).toEqual({
-      'nested.props.foo': 'newBaz',
-    });
-  });
-
-  it('should be able to call setState() multiple times for the same action and store all values', () => {
-    const module = new Module();
-
-    module.setState({
-      foo: 'newBaz',
-    }, { type: '@@test/CHANGE_FOO' });
-
-    module.setState({
-      anotherFoo: 'anotherNewBaz',
-    }, { type: '@@test/CHANGE_FOO' });
-
-    expect(module.stateFragments['@@test/CHANGE_FOO']).toEqual({
-      foo: 'newBaz',
-      anotherFoo: 'anotherNewBaz',
-    });
-  });
-
-  it('should dispatch after calling setState() if the action is asyncronous', () => {
-    const store = mockStore();
-    const module = new Module('test', {}, store);
-
-    module.setState({
-      foo: 'newBaz',
-    }, { type: '@@test/CHANGE_FOO', async: true });
-
-    expect(store.getActions()).toEqual([{ type: '@@test/CHANGE_FOO', async: true }]);
   });
 
   it('should have a getState method', () => {
@@ -210,15 +146,6 @@ describe('module.js', () => {
       tagThree: 'tag-3',
       apple: 'apple',
     });
-  });
-
-  it('should be able read changes in state immediately using getState()', () => {
-    const state = mockState();
-    const module = new Module('test', state, mockStore({ test: state }));
-    module.setState({
-      foo: 'newBaz',
-    });
-    expect(module.getState('foo')).toBe('newBaz');
   });
 
   it('should have a createAction method', () => {
@@ -303,14 +230,5 @@ describe('module.js', () => {
   it('should have a handleAction method', () => {
     const module = new Module();
     expect(module).toHaveProperty('handleAction', expect.any(Function));
-  });
-
-  it('should be able to detect an asyncronous action', () => {
-    const state = mockState();
-    const store = mockStore(state);
-    const module = new Module('test', state, store);
-    module.createAction('fetch_data', function* callback() { yield 'foo'; });
-    store.dispatch(module.actions.fetchData());
-    expect(store.getActions()[0]).toHaveProperty('async', true);
   });
 });

@@ -53,15 +53,16 @@ class Module {
   }
 
   reducer = (state = this.initialState, action = {}) => {
-    const actionType = (action.type.match(/@@(.*?)\/((.*?)(?=\/)|(.*?)$)/) || [])[0] || action.type;
-    const subActionType = action.type.replace(actionType, '').slice(1);
+    const actionType = action.type || '';
+    const mainActionType = (actionType.match(/@@(.*?)\/((.*?)(?=\/)|(.*?)$)/) || [])[0] || actionType;
+    const subActionType = actionType.replace(actionType, '').slice(1);
 
     if (subActionType === 'UPDATE') {
       return this.mergeStates(state, action.payload || {});
     }
 
-    if (typeof this.subReducers[actionType] !== 'undefined') {
-      return this.subReducers[actionType](state, action);
+    if (typeof this.subReducers[mainActionType] !== 'undefined') {
+      return this.subReducers[mainActionType](state, action);
     }
 
     return state;
