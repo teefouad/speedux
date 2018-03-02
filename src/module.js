@@ -1,3 +1,5 @@
+import { takeLatest, put, call } from 'redux-saga/effects';
+
 import * as helpers from './helpers';
 
 class Module {
@@ -15,46 +17,140 @@ class Module {
   actionsKey = null;
   types = {};
   actions = {};
+  sagas = {};
   subReducers = {};
-  stateFragments = {};
   initialState = {};
-  currentAction = {};
 
   getPrefix = () => `@@${this.name}/`
 
-  setState = (stateFragment, action = null) => {
-    const currentAction = action || this.currentAction;
+  createAction = (name, callback = () => null) => {
+    const actionName = Module.getSnakeCaseName(name);
+    const actionType = `${this.getPrefix()}${actionName}`;
+    const actionCreatorName = Module.getCamelCaseName(name);
+    const argNames = helpers.getArgNames(callback);
 
-    this.stateFragments[currentAction.type] = {
-      ...this.stateFragments[currentAction.type],
-      ...stateFragment,
-    };
+    // register type
+    this.types[actionName] = actionType;
 
-    if (currentAction.async === true) {
-      this.store.dispatch(currentAction);
-    }
+    // register sub reducer
+    this.subReducers[actionType] = this.subReducerForAction(actionType, argNames, callback);
+
+    // register action creator
+    this.actions[actionCreatorName] = this.actionCreatorForAction(actionType, argNames);
+
+    // register saga
+    this.sagas[actionType] = this.sagaForAction(actionType, argNames, callback);
   }
 
-  getState = (query, action = null) => {
-    const currentAction = action || this.currentAction;
-    const stateFragment = this.stateFragments[currentAction.type] || {};
+  handleAction = (name, callback = () => null) => {
+    const argNames = helpers.getArgNames(callback);
+
+    // register sub reducer
+    this.subReducers[name] = this.subReducerForAction(name, argNames, callback);
+
+    // register saga
+    this.sagas[name] = this.sagaForAction(name, argNames, callback);
+  }
+
+  reducer = (state = this.initialState, action = {}) => {
+    const actionType = (action.type.match(/@@(.*?)\/((.*?)(?=\/)|(.*?)$)/) || [])[0] || action.type;
+    const subActionType = action.type.replace(actionType, '').slice(1);
+
+    if (subActionType === 'UPDATE') {
+      return this.mergeStates(state, action.payload || {});
+    }
+
+    if (typeof this.subReducers[actionType] !== 'undefined') {
+      return this.subReducers[actionType](state, action);
+    }
+
+    return state;
+  }
+
+  subReducerForAction = (actionType, argNames, callback) => (state, action) => {
+    if (action.type === actionType) {
+      const stateFragment = this.executeCallback(action, callback, argNames);
+      return this.mergeStates(state, stateFragment || {});
+    }
+
+    return state;
+  }
+
+  actionCreatorForAction = (actionType, argNames) => (...args) => {
+    const payload = argNames.reduce((prev, next, index) => ({
+      ...prev,
+      [next]: args[index],
+    }), {});
+    const action = {
+      type: actionType,
+      payload,
+    };
+
+    return action;
+  }
+
+  sagaForAction = (actionType, argNames, callback) => function* saga() {
+    yield takeLatest(actionType, function* sagaWorker(action) {
+      const result = this.executeCallback(action, callback, argNames);
+
+      if (result && typeof result[Symbol.iterator] === 'function') {
+        try {
+          let data;
+          let isDone = false;
+          let dieAfter = 50;
+
+          while (!isDone) {
+            const next = result.next(data);
+            const nextResult = next.value;
+            isDone = next.done;
+
+            if (nextResult instanceof Promise) {
+              data = yield call(() => nextResult);
+            } else
+            if (helpers.getObjectType(nextResult) === 'object') {
+              yield put({
+                type: `${action.type}/UPDATE`,
+                payload: nextResult,
+              });
+            }
+
+            dieAfter -= 1;
+
+            if (dieAfter === 0) {
+              throw new Error('An async action handler cannot yield more than 50 values.');
+            }
+          }
+
+          yield put({
+            type: `${action.type}/COMPLETE`,
+          });
+        } catch (e) {
+          yield put({
+            type: `${action.type}/ERROR`,
+            message: e.message,
+          });
+        }
+      }
+    }.bind(this));
+  }.bind(this)
+
+  getState = (query) => {
     const state = this.store.getState()[this.name];
-    const mergedState = this.mergeStates(state, stateFragment);
 
     // handle query strings
     if (helpers.getObjectType(query) === 'string') {
-      return helpers.findPropInObject(mergedState, query);
+      return helpers.findPropInObject(state, query);
     }
 
     // handle query objects
     if (helpers.getObjectType(query) === 'object') {
       return Object.keys(query).reduce((prev, next) => ({
         ...prev,
-        [next]: helpers.findPropInObject(mergedState, query[next]),
+        [next]: helpers.findPropInObject(state, query[next]),
       }), {});
     }
 
-    return mergedState;
+    return state;
   }
 
   mergeStates = (stateA, stateB) => Object.keys(stateB).reduce(
@@ -62,94 +158,9 @@ class Module {
     { ...stateA },
   )
 
-  reducer = (state = this.initialState, action = {}) => {
-    if (typeof this.subReducers[action.type] !== 'undefined') {
-      return this.subReducers[action.type](state, action);
-    }
-
-    return state;
-  }
-
-  createAction = (name, callback = () => null) => {
-    const prefix = this.getPrefix();
-    const actionName = Module.getSnakeCaseName(name);
-    const actionType = `${prefix}${actionName}`;
-    const actionCreatorName = Module.getCamelCaseName(name);
-
-    this.types[actionName] = actionType;
-
-    this.actions[actionCreatorName] = (...args) => {
-      // reset current action object for syncronous actions
-      this.currentAction = {};
-
-      const argNames = helpers.getArgNames(callback);
-      const payload = argNames.reduce((prev, next, index) => ({
-        ...prev,
-        [next]: args[index],
-      }), {});
-      const action = {
-        type: actionType,
-        payload,
-      };
-
-      const result = this.executeCallback(callback, action, argNames);
-
-      // check if the callback return value is an iterable (usually a generator function)
-      // if it is an iterable then return a thunk instead of the action object and consume
-      // the generator function
-      if (result && typeof result[Symbol.iterator] === 'function') {
-        return (dispatch) => {
-          this.currentAction = {
-            ...action,
-            async: true,
-          };
-
-          dispatch(this.currentAction);
-
-          // recursively consume the generator function, `iterable` is the iterable object and
-          // `data` is the data resolved from a promise (if any)
-          (function consumeIterable(iterable, data) {
-            const next = iterable.next(data);
-
-            // if the generator yields a promise, wait for the promise to resolve before making
-            // the next call
-            if (next.value instanceof Promise) {
-              next.value.then((promiseResult) => {
-                consumeIterable(iterable, promiseResult);
-              });
-            } else if (!next.done) {
-              // get the next value, if there is one
-              consumeIterable(iterable, next.value);
-            }
-          }(result));
-        };
-      }
-
-      return action;
-    };
-
-    this.subReducers[actionType] = (state, action) => {
-      if (action.type === actionType) {
-        return this.mergeStates(state, this.stateFragments[action.type] || {});
-      }
-
-      return state;
-    };
-  }
-
-  handleAction = (name, callback = () => null) => {
-    const argNames = helpers.getArgNames(callback);
-    this.subReducers[name] = (state, action) => {
-      this.executeCallback(callback, action, argNames);
-      return this.mergeStates(state, this.stateFragments[action.type] || {});
-    };
-  }
-
-  executeCallback = (callback, action, argNames) => {
-    this.stateFragments = {};
-    this.currentAction = action;
-    return callback.apply(this, argNames.map(arg => action.payload[arg]));
-  }
+  executeCallback = (action, callback, argNames) => callback.apply({
+    getState: this.getState,
+  }, argNames.map(arg => action.payload[arg]))
 
   static getCamelCaseName = (name) => {
     const cleanName = name.replace(/[^\w\s_-]/g, '');

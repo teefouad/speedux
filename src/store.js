@@ -8,8 +8,16 @@ import {
   compose,
 } from 'redux';
 
+import createSagaMiddleware from 'redux-saga';
+
 /**
- * Creates a middleware function that is used to enable Redux devTools
+ * Creates the saga middleware function.
+ * @type {Function}
+ */
+const sagaMiddleware = createSagaMiddleware();
+
+/**
+ * Creates a middleware function that is used to enable Redux devTools.
  * in the browser.
  * @type {Function}
  */
@@ -40,7 +48,7 @@ export const StoreManager = {
    * Use `useMiddleware` method to add other middleware functions to this list.
    * @type {Array}
    */
-  middleWares: [devTools],
+  middleWares: [applyMiddleware(sagaMiddleware), devTools],
 
   /**
    * Registers a reducer function.
@@ -113,6 +121,14 @@ export const StoreManager = {
    */
   useMiddleware(middleWare) {
     return StoreManager.middleWares.unshift(applyMiddleware(middleWare));
+  },
+
+  /**
+   * Runs a saga generator function.
+   * @param {Generator} saga Saga to run.
+   */
+  runSaga(saga) {
+    sagaMiddleware.run(saga);
   },
 };
 

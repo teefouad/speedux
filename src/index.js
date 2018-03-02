@@ -1,18 +1,19 @@
-import thunk from 'redux-thunk';
+import 'babel-polyfill';
 
 import { StoreManager } from './store';
 import Module from './module';
 import Connector from './connector';
 import * as helpers from './helpers';
 
-StoreManager.useMiddleware(thunk);
-StoreManager.buildInstance();
-
 Connector.use(StoreManager);
 
 export const store = StoreManager.getInstance();
 
 export const { useMiddleware, addReducer } = StoreManager;
+
+export function connect(component, module) {
+  return Connector.connect(component, module);
+}
 
 export function createModule(...args) {
   let name = null;
@@ -39,10 +40,6 @@ export function createModule(...args) {
   callback.call(api, api);
 
   return module;
-}
-
-export function connect(component, module) {
-  return Connector.connect(component, module);
 }
 
 export default createModule;

@@ -112,6 +112,11 @@ const Connector = {
     // update the store to register the new reducer
     Connector.storeManager.update();
 
+    // run each saga
+    Object.keys(config.sagas).forEach((key) => {
+      Connector.storeManager.runSaga(config.sagas[key]);
+    });
+
     return connectedComponent;
   },
 };
