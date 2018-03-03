@@ -79,10 +79,13 @@ export const StoreManager = {
    * @return {Function} The root reducer function.
    */
   getRootReducer() {
-    return combineReducers({
-      $_foo: (state = {}) => state, // default reducer
-      ...StoreManager.reducers,
-    });
+    const reducers = { ...StoreManager.reducers };
+
+    if (Object.keys(reducers).length === 0 || process.env.NODE_ENV === 'jest') {
+      reducers.$_foo = (state = {}) => state; // default reducer
+    }
+
+    return combineReducers(reducers);
   },
 
   /**
