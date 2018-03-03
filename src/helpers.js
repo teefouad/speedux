@@ -63,26 +63,39 @@ export const getObjectType = (obj) => {
  */
 export const findPropInObject = (obj, pathStr, ...replaceWith) => {
   const path = pathStr.replace(/\]$/, '').split(/\]\[|\]\.|\[|\]|\./);
-  let returnObj = { ...obj };
+  let currentType = getObjectType(obj);
+  let returnObj = currentType === 'array' ? [...obj] : { ...obj };
   let currentPath = returnObj;
 
-  path.forEach((prop, i) => {
-    const type = getObjectType(currentPath[prop]);
+  for (let i = 0; i < path.length; i += 1) {
+    const prop = path[i];
+
+    if (prop === '*') {
+      const list = Object.keys(currentType === 'array' ? { ...currentPath } : currentPath);
+
+      for (let j = 0; j < list.length; j += 1) {
+        currentPath[list[j]] = findPropInObject(currentPath[list[j]], path.slice(i + 1).join('.'), ...replaceWith);
+      }
+
+      break;
+    }
+
+    currentType = getObjectType(currentPath[prop]);
 
     // de-reference the value if it's an object
-    if (type === 'object') {
+    if (currentType === 'object') {
       currentPath[prop] = {
         ...currentPath[prop],
       };
     }
 
     // de-reference the value if it's an array
-    if (type === 'array') {
+    if (currentType === 'array') {
       currentPath[prop] = [...currentPath[prop]];
     }
 
     // create it if it doesn't exist
-    if (type === 'undefined' && replaceWith.length !== 0) {
+    if (currentType === 'undefined' && replaceWith.length !== 0) {
       currentPath[prop] = {};
     }
 
@@ -97,7 +110,7 @@ export const findPropInObject = (obj, pathStr, ...replaceWith) => {
       // return the deepest value, if there is no new value to set
       returnObj = currentPath[prop];
     }
-  });
+  }
 
   return returnObj;
 };
