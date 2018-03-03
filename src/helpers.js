@@ -105,7 +105,15 @@ export const findPropInObject = (obj, pathStr, ...replaceWith) => {
     } else
     if (replaceWith.length !== 0) {
       // replace the deepest value, if needed
-      [currentPath[prop]] = replaceWith;
+      if (replaceWith.length === 1 && replaceWith[0] === undefined) {
+        if (currentType === 'object') {
+          delete currentPath[prop];
+        } else {
+          currentPath.splice(prop, 1);
+        }
+      } else {
+        [currentPath[prop]] = replaceWith;
+      }
     } else {
       // return the deepest value, if there is no new value to set
       returnObj = currentPath[prop];
