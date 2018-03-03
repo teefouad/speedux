@@ -1,9 +1,8 @@
-import thunkMiddleware from 'redux-thunk';
 import configureStore from 'redux-mock-store';
 
 import Module from '../src/module';
 
-const mockStore = configureStore([thunkMiddleware]);
+const mockStore = configureStore();
 
 const mockState = state => ({
   loading: false,
