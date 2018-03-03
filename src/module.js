@@ -93,10 +93,10 @@ class Module {
     const argNames = helpers.getArgNames(callback);
 
     // register sub reducer
-    this.subReducers[type] = this.subReducerForAction(type, argNames, callback);
+    this.subReducers[type] = this.subReducerForAction(type, argNames, callback, 'handle');
 
     // register saga
-    this.sagas[type] = this.sagaForAction(type, argNames, callback);
+    this.sagas[type] = this.sagaForAction(type, argNames, callback, 'handle');
   }
 
   /**
@@ -107,7 +107,7 @@ class Module {
     // or it may contain a sub action type: '@@prefix/ACTION_NAME/SUB_ACTION_NAME'
     const actionType = action.type || '';
     const mainActionType = (actionType.match(/@@(.*?)\/((.*?)(?=\/)|(.*?)$)/) || [])[0] || actionType;
-    const subActionType = actionType.replace(actionType, '').slice(1);
+    const subActionType = actionType.replace(mainActionType, '').slice(1);
 
     // if the sub action is 'update', just update the state with the payload object
     if (subActionType === 'UPDATE') {
@@ -126,9 +126,9 @@ class Module {
   /**
    * Creates and returns a sub reducer function for a given action type.
    */
-  subReducerForAction = (actionType, argNames, callback) => (state, action) => {
+  subReducerForAction = (actionType, argNames, callback, mode = 'create') => (state, action) => {
     if (action.type === actionType) {
-      const stateFragment = this.executeCallback(action, callback, argNames);
+      const stateFragment = this.executeCallback(action, callback, argNames, mode);
       return this.mergeStates(state, stateFragment || {});
     }
 
@@ -157,9 +157,9 @@ class Module {
   /**
    * Creates and returns a saga generator function for a given action type.
    */
-  sagaForAction = (actionType, argNames, callback) => function* saga() {
+  sagaForAction = (actionType, argNames, callback, mode = 'create') => function* saga() {
     yield takeLatest(actionType, function* sagaWorker(action) {
-      const result = this.executeCallback(action, callback, argNames);
+      const result = this.executeCallback(action, callback, argNames, mode);
 
       // check if the callback return value is an iterable (usually a generator function)
       // if it is an iterable then consume it
@@ -253,9 +253,13 @@ class Module {
   /**
    * Executes a given callback function and passes it getState in the context.
    */
-  executeCallback = (action, callback, argNames) => callback.apply({
-    getState: this.getState,
-  }, argNames.map(arg => action.payload[arg]))
+  executeCallback = (action, callback, argNames, mode = 'create') => {
+    const callbackArgs = mode === 'create' ? argNames.map(arg => action.payload[arg]) : [action];
+
+    return callback.apply({
+      getState: this.getState,
+    }, callbackArgs);
+  }
 
   static getCamelCaseName = (name) => {
     const cleanName = name.replace(/[^\w\s_-]/g, '');
