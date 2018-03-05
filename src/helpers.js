@@ -61,64 +61,116 @@ export const getObjectType = (obj) => {
  *                                parameter if you just want to read the property.
  * @return {Object}               The property and its value wrapped in an object.
  */
-export const findPropInObject = (obj, pathStr, ...replaceWith) => {
-  const path = pathStr.replace(/\]$/, '').split(/\]\[|\]\.|\[|\]|\./);
-  let currentType = getObjectType(obj);
-  let returnObj = currentType === 'array' ? [...obj] : { ...obj };
-  let currentPath = returnObj;
+export const findPropInObject = (obj, pathStr, copyByRef = false, ...replaceWith) => {
+  const type = getObjectType(obj);
+  const shouldReplace = replaceWith.length > 0;
 
-  for (let i = 0; i < path.length; i += 1) {
-    const prop = path[i];
+  let result = obj;
 
-    if (prop === '*') {
-      const list = Object.keys(currentType === 'array' ? { ...currentPath } : currentPath);
-
-      for (let j = 0; j < list.length; j += 1) {
-        currentPath[list[j]] = findPropInObject(currentPath[list[j]], path.slice(i + 1).join('.'), ...replaceWith);
-      }
-
-      break;
+  if (!copyByRef) {
+    if (type === 'array') {
+      result = [...obj];
     }
 
-    currentType = getObjectType(currentPath[prop]);
-
-    // de-reference the value if it's an object
-    if (currentType === 'object') {
-      currentPath[prop] = {
-        ...currentPath[prop],
-      };
-    }
-
-    // de-reference the value if it's an array
-    if (currentType === 'array') {
-      currentPath[prop] = [...currentPath[prop]];
-    }
-
-    // create it if it doesn't exist
-    if (currentType === 'undefined' && replaceWith.length !== 0) {
-      currentPath[prop] = {};
-    }
-
-    if (i < path.length - 1) {
-      // keep digging through the object
-      currentPath = currentPath[prop];
-    } else
-    if (replaceWith.length !== 0) {
-      // replace the deepest value, if needed
-      if (replaceWith.length === 1 && replaceWith[0] === undefined) {
-        if (currentType === 'object') {
-          delete currentPath[prop];
-        } else {
-          currentPath.splice(prop, 1);
-        }
-      } else {
-        [currentPath[prop]] = replaceWith;
-      }
-    } else {
-      // return the deepest value, if there is no new value to set
-      returnObj = currentPath[prop];
+    if (type === 'object') {
+      result = { ...obj };
     }
   }
 
-  return returnObj;
+  if (pathStr === '') {
+    if (shouldReplace) {
+      return result;
+    }
+
+    return undefined;
+  }
+
+  if (pathStr === '*') {
+    if (shouldReplace) {
+      if (type === 'array') {
+        result.forEach((item, index) => { [result[index]] = replaceWith; });
+      }
+
+      if (type === 'object') {
+        Object.keys(result).forEach((key) => { [result[key]] = replaceWith; });
+      }
+    }
+
+    return result;
+  }
+
+  let path = pathStr.replace(/^\[|\]$/g, '');
+  path = path.replace(/\[|\]|\.]/g, '.');
+  path = path.replace(/\.{2,}/g, '.');
+  path = path.split('.');
+
+  let currentTarget = result;
+  let seenWildcard = false;
+
+  for (let pos = 0; pos < path.length; pos += 1) {
+    const prop = path[pos];
+
+    if (pos < path.length - 1) {
+      if (prop === '*') {
+        seenWildcard = true;
+
+        if (shouldReplace) {
+          const currentType = getObjectType(currentTarget);
+          const currentTargetKeys = Object.keys(currentType === 'array' ? { ...currentTarget } : currentTarget);
+
+          for (let j = 0; j < currentTargetKeys.length; j += 1) {
+            const key = currentTargetKeys[j];
+            const keyType = getObjectType(currentTarget[key]);
+
+            if (keyType === 'object' || keyType === 'array') {
+              currentTarget[key] = findPropInObject(
+                currentTarget[key],
+                path.slice(pos + 1).join('.'),
+                copyByRef,
+                ...replaceWith,
+              );
+            } else {
+              [currentTarget[key]] = replaceWith;
+            }
+          }
+
+          break;
+        }
+      }
+
+      currentTarget = findPropInObject(currentTarget, prop, copyByRef);
+    }
+
+    if (pos === path.length - 1) {
+      if (shouldReplace) {
+        if (prop === '*') {
+          findPropInObject(currentTarget, prop, true, ...replaceWith);
+        } else {
+          [currentTarget[prop]] = replaceWith;
+        }
+
+        return result;
+      }
+
+      if (path.length > 1) {
+        if (seenWildcard) {
+          if (getObjectType(currentTarget) === 'array') {
+            return currentTarget.map(item =>
+              findPropInObject(item, prop, copyByRef));
+          }
+
+          if (getObjectType(currentTarget) === 'object') {
+            return Object.values(currentTarget).map(item =>
+              findPropInObject(item, prop, copyByRef));
+          }
+        }
+
+        return findPropInObject(currentTarget, prop, copyByRef);
+      }
+
+      return currentTarget[prop];
+    }
+  }
+
+  return result;
 };
