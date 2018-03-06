@@ -246,7 +246,7 @@ class Module {
    * Merges two state objects and returns the merged object as a new copy.
    */
   mergeStates = (stateA, stateB) => Object.keys(stateB).reduce(
-    (prev, next) => helpers.findPropInObject(prev, next, stateB[next]),
+    (prev, next) => helpers.findPropInObject(prev, next, false, stateB[next]),
     { ...stateA },
   )
 

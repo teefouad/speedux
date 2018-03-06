@@ -15,14 +15,34 @@ describe('findPropInObject', () => {
     expect(findPropInObject(obj, path)).toBe(expected);
   });
 
-  it('should read: *', () => {
+  it('should read: * where * is an object', () => {
     const obj = {
       foo: 'baz',
       fiz: 'buzz',
       fae: 'beez',
     };
     const path = '*';
-    const expected = { ...obj };
+    const expected = [
+      'baz',
+      'buzz',
+      'beez',
+    ];
+
+    expect(findPropInObject(obj, path)).toEqual(expected);
+  });
+
+  it('should read: * where * is an object', () => {
+    const obj = [
+      'baz',
+      'buzz',
+      'beez',
+    ];
+    const path = '*';
+    const expected = [
+      'baz',
+      'buzz',
+      'beez',
+    ];
 
     expect(findPropInObject(obj, path)).toEqual(expected);
   });
@@ -181,6 +201,24 @@ describe('findPropInObject', () => {
     expect(findPropInObject(obj, path)).toEqual(expected);
   });
 
+  it('should read: foo.* where * is an object', () => {
+    const obj = {
+      foo: {
+        a: { foo: 'baz' },
+        b: { foo: 'buzz' },
+        c: { foo: 'boo' },
+      },
+    };
+    const path = 'foo.*';
+    const expected = [
+      { foo: 'baz' },
+      { foo: 'buzz' },
+      { foo: 'boo' },
+    ];
+
+    expect(findPropInObject(obj, path)).toEqual(expected);
+  });
+
   it('should read: foo.* where * is an array', () => {
     const obj = {
       foo: [
@@ -280,11 +318,11 @@ describe('findPropInObject', () => {
       ],
     };
     const path = 'foo[0].fiz.*';
-    const expected = {
-      a: { foo: 'baz' },
-      b: { foo: 'buzz' },
-      c: { foo: 'boo' },
-    };
+    const expected = [
+      { foo: 'baz' },
+      { foo: 'buzz' },
+      { foo: 'boo' },
+    ];
 
     expect(findPropInObject(obj, path)).toEqual(expected);
   });
@@ -347,7 +385,49 @@ describe('findPropInObject', () => {
     expect(findPropInObject(obj, path)).toEqual(expected);
   });
 
-  // ==========================================================
+  it('should read: foo[0].*.fiz.*.* where * is an object', () => {
+    const obj = {
+      foo: [
+        {
+          a: {
+            fiz: [
+              ['a', 'b'],
+              ['c', 'd'],
+            ],
+          },
+          b: {
+            fiz: [
+              ['a', 'b'],
+              ['c', 'd'],
+            ],
+          },
+          c: {
+            fiz: [
+              ['a', 'b'],
+              ['c', 'd'],
+            ],
+          },
+        },
+      ],
+    };
+    const path = 'foo[0].*.fiz.*.*';
+    const expected = [
+      [
+        ['a', 'b'],
+        ['c', 'd'],
+      ],
+      [
+        ['a', 'b'],
+        ['c', 'd'],
+      ],
+      [
+        ['a', 'b'],
+        ['c', 'd'],
+      ],
+    ];
+
+    expect(findPropInObject(obj, path)).toEqual(expected);
+  });
 
   it('should write: empty string', () => {
     const obj = {
