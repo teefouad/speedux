@@ -88,7 +88,7 @@ export const findPropInObject = (obj, pathStr, copyByRef = false, ...args) => {
 
   // the path is not empty and not a wildcard
   // clean and convert the path string into an array
-  let path = pathStr.replace(/^\[|\]$/g, ''); // remove starting and ending brackets
+  let path = pathStr.toString().replace(/^\[|\]$/g, ''); // remove starting and ending brackets
   path = path.replace(/\[|\]/g, '.'); // convert all brackets to dots
   path = path.replace(/\.{2,}/g, '.'); // remove dot duplications
   path = path.split('.'); // break the string at the dots
@@ -123,13 +123,13 @@ export const findPropInObject = (obj, pathStr, copyByRef = false, ...args) => {
         // writing to a wildcard on an array would result in updating
         // all items of the array with the given value
         if (type === 'array') {
-          result.forEach((item, index) => { result[index] = replaceWith; });
+          result.forEach((item, index) => { findPropInObject(result, index, true, replaceWith); });
         }
 
         // writing to a wildcard on an object would result in updating
         // all keys of the object with the given value
         if (type === 'object') {
-          Object.keys(result).forEach((key) => { result[key] = replaceWith; });
+          Object.keys(result).forEach(key => findPropInObject(result, key, true, replaceWith));
         }
 
         // return the updated result
@@ -150,7 +150,15 @@ export const findPropInObject = (obj, pathStr, copyByRef = false, ...args) => {
      */
     if (shouldReplace) {
       // update the value then return the resulting object
-      result[prop] = replaceWith;
+      if (replaceWith === undefined && type === 'array') {
+        result.splice(prop, 1);
+      } else
+      if (replaceWith === undefined && type === 'object') {
+        delete result[prop];
+      } else {
+        result[prop] = replaceWith;
+      }
+
       return result;
     }
 
