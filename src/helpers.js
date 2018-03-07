@@ -56,7 +56,7 @@ export const getObjectType = (obj) => {
  * replace it if a new value is provided.
  * @param {Object}  obj           Object to search.
  * @param {String}  prop          String that represents the property name.
- * @param {Any}     replaceWith   New value to replace the property with. Omit this
+ * @param {Any}     value         New value to replace the property with. Omit this
  *                                parameter if you just want to read the property.
  * @return {Object}               Value of the property or a copy of the same object updated
  *                                with the provided value.
@@ -65,7 +65,7 @@ export const findDirectPropInObject = (obj, prop, copyByRef = false, ...args) =>
   const type = getObjectType(obj);
   const propType = getObjectType(obj[prop]);
   const shouldReplace = args.length > 0;
-  const replaceWith = args[0];
+  const value = args[0];
 
   // cannot work with types other than arrays and objects
   if (type !== 'array' && type !== 'object') {
@@ -102,18 +102,34 @@ export const findDirectPropInObject = (obj, prop, copyByRef = false, ...args) =>
   if (prop === '*') {
     if (shouldReplace) {
       if (type === 'array') {
-        if (replaceWith === undefined) {
+        if (value === undefined) {
           while (result.length) {
-            findDirectPropInObject(result, 0, true, replaceWith);
+            findDirectPropInObject(result, 0, true, value);
           }
         } else {
+          const { length } = result;
+
+          // traverse the array end-to-start to make sure splicing
+          // items does not affect the current index
           result.forEach((item, index) => {
-            result[index] = findDirectPropInObject(result, index, copyByRef, replaceWith)[index];
+            const itemIndex = length - 1 - index;
+            let itemValue = value;
+
+            if (getObjectType(value) === 'function') {
+              itemValue = value(result[itemIndex]);
+            }
+
+            if (itemValue === undefined) {
+              findDirectPropInObject(result, itemIndex, true, undefined);
+            } else {
+              const newResult = findDirectPropInObject(result, itemIndex, copyByRef, itemValue);
+              result[itemIndex] = newResult[itemIndex];
+            }
           });
         }
       } else
       if (type === 'object') {
-        Object.keys(result).forEach(key => findDirectPropInObject(result, key, true, replaceWith));
+        Object.keys(result).forEach(key => findDirectPropInObject(result, key, true, value));
       }
 
       return result;
@@ -133,6 +149,12 @@ export const findDirectPropInObject = (obj, prop, copyByRef = false, ...args) =>
 
   // handle other values
   if (shouldReplace) {
+    let replaceWith = value;
+
+    if (getObjectType(replaceWith) === 'function') {
+      replaceWith = replaceWith(result[prop]);
+    }
+
     // update the value then return the resulting object
     if (replaceWith === undefined && type === 'array') {
       result.splice(prop, 1);
@@ -167,7 +189,7 @@ export const findDirectPropInObject = (obj, prop, copyByRef = false, ...args) =>
  * @param {Object}  obj           Object to search.
  * @param {String}  pathStr       String that represents the property path.
  *                                For example: data.entries[0][3].title
- * @param {Any}     replaceWith   New value to replace the property with. Omit this
+ * @param {Any}     value         New value to replace the property with. Omit this
  *                                parameter if you just want to read the property.
  * @return {Object}               Value of the property or a copy of the same object updated
  *                                with the provided value.
@@ -175,7 +197,7 @@ export const findDirectPropInObject = (obj, prop, copyByRef = false, ...args) =>
 export const findPropInObject = (obj, pathStr, copyByRef = false, ...args) => {
   const type = getObjectType(obj);
   const shouldReplace = args.length > 0;
-  const replaceWith = args[0];
+  const value = args[0];
 
   // clean and convert the path string into an array
   let path = pathStr.toString().replace(/^\[|\]$/g, ''); // remove starting and ending brackets
@@ -185,7 +207,7 @@ export const findPropInObject = (obj, pathStr, copyByRef = false, ...args) => {
 
   if (path.length === 1) {
     if (shouldReplace) {
-      return findDirectPropInObject(obj, path[0], copyByRef, replaceWith);
+      return findDirectPropInObject(obj, path[0], copyByRef, value);
     }
 
     return findDirectPropInObject(obj, path[0], copyByRef);
@@ -214,20 +236,20 @@ export const findPropInObject = (obj, pathStr, copyByRef = false, ...args) => {
     if (prop === '*') {
       if (type === 'array') {
         result.forEach((item, index) => {
-          result[index] = findPropInObject(item, remainingPath, copyByRef, replaceWith);
+          result[index] = findPropInObject(item, remainingPath, copyByRef, value);
         });
       }
 
       if (type === 'object') {
         Object.keys(result).forEach((key) => {
-          result[key] = findPropInObject(result[key], remainingPath, copyByRef, replaceWith)
+          result[key] = findPropInObject(result[key], remainingPath, copyByRef, value);
         });
       }
 
       return result;
     }
 
-    result[prop] = findPropInObject(result[prop], remainingPath, copyByRef, replaceWith);
+    result[prop] = findPropInObject(result[prop], remainingPath, copyByRef, value);
 
     return result;
   }
