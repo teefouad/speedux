@@ -876,4 +876,422 @@ describe('findPropInObject', () => {
 
     expect(findPropInObject(obj, path, false, 'foo')).toEqual(expected);
   });
+
+  it('should delete: empty string', () => {
+    const obj = {
+      foo: 'baz',
+      fiz: 'buzz',
+      fae: 'beez',
+    };
+    const path = '';
+    const expected = { ...obj };
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: * where * is an object', () => {
+    const obj = {
+      foo: 'baz',
+      fiz: 'buzz',
+      fae: 'beez',
+    };
+    const path = '*';
+    const expected = {};
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: * where * is an array', () => {
+    const obj = [
+      'baz',
+      'buzz',
+      'beez',
+    ];
+    const path = '*';
+    const expected = [];
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: foo', () => {
+    const obj = {
+      foo: 'baz',
+      fiz: 'buzz',
+      fae: 'beez',
+    };
+    const path = 'foo';
+    const expected = {
+      fiz: 'buzz',
+      fae: 'beez',
+    };
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: foo.baz', () => {
+    const obj = {
+      foo: {
+        baz: 'fiz',
+      },
+    };
+    const path = 'foo.baz';
+    const expected = {
+      foo: {},
+    };
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: foo.baz.fizz', () => {
+    const obj = {
+      foo: {
+        baz: {
+          fizz: 'buzz',
+        },
+      },
+    };
+    const path = 'foo.baz.fizz';
+    const expected = {
+      foo: {
+        baz: {},
+      },
+    };
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: [0]', () => {
+    const obj = [
+      'baz',
+      'buzz',
+      'beez',
+    ];
+    const path = '[0]';
+    const expected = [
+      'buzz',
+      'beez',
+    ];
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: [0][1]', () => {
+    const obj = [
+      ['baz', 'buzz', 'beez'],
+    ];
+    const path = '[0][1]';
+    const expected = [
+      ['baz', 'beez'],
+    ];
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: foo[0]', () => {
+    const obj = {
+      foo: ['baz', 'buzz', 'beez'],
+    };
+    const path = 'foo[0]';
+    const expected = {
+      foo: ['buzz', 'beez'],
+    };
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: [1].fiz', () => {
+    const obj = [
+      { foo: 'baz' },
+      { fiz: 'buzz' },
+    ];
+    const path = '[1].fiz';
+    const expected = [
+      { foo: 'baz' },
+      {},
+    ];
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: [1].fiz[0]', () => {
+    const obj = [
+      { foo: 'baz' },
+      { fiz: ['baz', 'buzz', 'beez'] },
+    ];
+    const path = '[1].fiz[0]';
+    const expected = [
+      { foo: 'baz' },
+      { fiz: ['buzz', 'beez'] },
+    ];
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: [1].fiz[0][1]', () => {
+    const obj = [
+      { foo: 'baz' },
+      {
+        fiz: [
+          ['baz', 'buzz', 'beez'],
+        ],
+      },
+    ];
+    const path = '[1].fiz[0][1]';
+    const expected = [
+      { foo: 'baz' },
+      {
+        fiz: [
+          ['baz', 'beez'],
+        ],
+      },
+    ];
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: foo[0].fiz', () => {
+    const obj = {
+      foo: [
+        { fiz: 'buzz' },
+      ],
+    };
+    const path = 'foo[0].fiz';
+    const expected = {
+      foo: [
+        {},
+      ],
+    };
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: foo.fizz[0].fiz[1][2].value', () => {
+    const obj = {
+      foo: {
+        fizz: [
+          {
+            fiz: [
+              'baz',
+              [
+                'beez',
+                'boo',
+                { value: 'buzz' },
+              ],
+            ],
+          },
+        ],
+      },
+    };
+    const path = 'foo.fizz[0].fiz[1][2].value';
+    const expected = {
+      foo: {
+        fizz: [
+          {
+            fiz: [
+              'baz',
+              [
+                'beez',
+                'boo',
+                {},
+              ],
+            ],
+          },
+        ],
+      },
+    };
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: foo.* where * is an object', () => {
+    const obj = {
+      foo: {
+        foo: 'baz',
+        fiz: 'buzz',
+        fae: 'beez',
+      },
+    };
+    const path = 'foo.*';
+    const expected = {
+      foo: {},
+    };
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: foo.* where * is an array', () => {
+    const obj = {
+      foo: [
+        'baz',
+        'buzz',
+        'beez',
+      ],
+    };
+    const path = 'foo.*';
+    const expected = {
+      foo: [],
+    };
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: *.foo where * is an object', () => {
+    const obj = {
+      a: { foo: 'baz' },
+      b: { foo: 'buzz' },
+      c: { foo: 'boo' },
+    };
+    const path = '*.foo';
+    const expected = {
+      a: {},
+      b: {},
+      c: {},
+    };
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: *.foo where * is an array', () => {
+    const obj = [
+      { foo: 'baz' },
+      { foo: 'buzz' },
+      { foo: 'boo' },
+    ];
+    const path = '*.foo';
+    const expected = [
+      {},
+      {},
+      {},
+    ];
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: foo.*.fiz where * is an object', () => {
+    const obj = {
+      foo: {
+        a: { fiz: 'baz' },
+        b: { fiz: 'buzz' },
+        c: { fiz: 'boo' },
+      },
+    };
+    const path = 'foo.*.fiz';
+    const expected = {
+      foo: {
+        a: {},
+        b: {},
+        c: {},
+      },
+    };
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: foo.*.baz where * is an array', () => {
+    const obj = {
+      foo: [
+        { fiz: 'baz' },
+        { fiz: 'buzz' },
+        { fiz: 'boo' },
+      ],
+    };
+    const path = 'foo.*.fiz';
+    const expected = {
+      foo: [
+        {},
+        {},
+        {},
+      ],
+    };
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: foo[0].fiz.* where * is an object', () => {
+    const obj = {
+      foo: [
+        {
+          fiz: {
+            a: { foo: 'baz' },
+            b: { foo: 'buzz' },
+            c: { foo: 'boo' },
+          },
+        },
+      ],
+    };
+    const path = 'foo[0].fiz.*';
+    const expected = {
+      foo: [
+        {
+          fiz: {},
+        },
+      ],
+    };
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: foo[0].fiz.* where * is an array', () => {
+    const obj = {
+      foo: [
+        {
+          fiz: [
+            'baz',
+            'buzz',
+            'boo',
+          ],
+        },
+      ],
+    };
+    const path = 'foo[0].fiz.*';
+    const expected = {
+      foo: [
+        {
+          fiz: [],
+        },
+      ],
+    };
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: fizz.*[0] where * is an object', () => {
+    const obj = {
+      fizz: {
+        a: ['baz'],
+        b: ['buzz'],
+        c: ['boo'],
+      },
+    };
+    const path = 'fizz.*[0]';
+    const expected = {
+      fizz: {
+        a: [],
+        b: [],
+        c: [],
+      },
+    };
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: fizz.*[0] where * is an array', () => {
+    const obj = {
+      fizz: [
+        ['baz'],
+        ['buzz'],
+        ['boo'],
+      ],
+    };
+    const path = 'fizz.*[0]';
+    const expected = {
+      fizz: [
+        [],
+        [],
+        [],
+      ],
+    };
+
+    expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
 });
