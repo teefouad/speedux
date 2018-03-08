@@ -1,6 +1,6 @@
 {
   "name": "speedux",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "An opinionated library that allows you to create actions and reducers for Redux, automatically. Speedux reduces the amount of code that needs to be written in a Redux application giving you peace of mind and more time to code the important stuff.",
   "main": "lib/index.js",
   "scripts": {

@@ -252,6 +252,93 @@ export default createModule('people', initialState, function({ createAction }) {
 });
 ```
 
+#### Wildcard Character: *
+If you would like to modify all items of an array or an object in the state, use a wildcard character:
+
+```javascript
+const initialState = {
+    list: [
+        { name: 'feeb' },
+        { name: 'foo' },
+        { name: 'fiz' },
+    ],
+};
+
+export default createModule('people', initialState, function({ createAction }) {
+    createAction('changeAllNames', function(newName) {
+        return {
+            'list.*.name': newName,
+        };
+    });
+});
+
+/*
+Invoking action changeAllNames('jane') will modify the state to:
+{
+    list: [
+        { name: 'jane' },
+        { name: 'jane' },
+        { name: 'jane' },
+    ],
+}
+*/
+```
+
+You can also use a wildcard for reading the state as well:
+
+```javascript
+const initialState = {
+    list: [
+        { name: 'feeb' },
+        { name: 'foo' },
+        { name: 'fiz' },
+    ],
+};
+
+export default createModule('people', initialState, function({ createAction, getState }) {
+    createAction('logAllNames', function() {
+        const names = getState('list.*.name');
+        console.log(names); // ['feeb', 'foo', 'fiz']
+    });
+});
+```
+
+#### Resolver Function
+
+You can pass a function that returns the new value of the state key:
+
+```javascript
+const initialState = {
+    list: [
+        { count: 151 },
+        { count: 120 },
+        { count: 2 },
+    ],
+};
+
+export default createModule('people', initialState, function({ createAction }) {
+    createAction('setMinimum', function() {
+        return {
+            'list.*.count': (oldValue) => {
+                if (oldValue < 50) return 50;
+                return oldValue;
+            },
+        };
+    });
+});
+
+/*
+Invoking action setMinimum() will modify the state to:
+{
+    list: [
+        { count: 151 },
+        { count: 120 },
+        { count: 50 },
+    ],
+}
+*/
+```
+
 &nbsp;
 
 ### handleAction(name, callback)
