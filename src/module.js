@@ -78,7 +78,7 @@ class Module {
     this.actions[actionCreatorName] = this.actionCreatorForAction(actionType, argNames);
 
     // register saga
-    this.sagas[actionCreatorName] = this.sagaForAction(actionType, argNames, callback);
+    this.sagas[actionCreatorName] = this.sagaForAction(actionType);
   }
 
   /**
@@ -96,7 +96,7 @@ class Module {
     this.subReducers[type] = this.subReducerForAction(type, argNames, callback, 'handle');
 
     // register saga
-    this.sagas[type] = this.sagaForAction(type, argNames, callback, 'handle');
+    this.sagas[type] = this.sagaForAction(type);
   }
 
   /**
@@ -128,8 +128,15 @@ class Module {
    */
   subReducerForAction = (actionType, argNames, callback, mode = 'create') => (state, action) => {
     if (action.type === actionType) {
-      const stateFragment = this.executeCallback(action, callback, argNames, mode);
-      return this.mergeStates(state, stateFragment || {});
+      const result = this.executeCallback(action, callback, argNames, mode);
+      const resultType = helpers.getObjectType(result);
+      const stateFragment = resultType === 'object' ? result : {};
+
+      // the saga handler will be called right after the reducer so instead of the saga
+      // handler executing the callback again, pass it the cached result
+      this.$cachedCallbackResultForSaga = result;
+
+      return this.mergeStates(state, stateFragment);
     }
 
     return state;
@@ -157,9 +164,9 @@ class Module {
   /**
    * Creates and returns a saga generator function for a given action type.
    */
-  sagaForAction = (actionType, argNames, callback, mode = 'create') => function* saga() {
+  sagaForAction = actionType => function* saga() {
     yield takeLatest(actionType, function* sagaWorker(action) {
-      const result = this.executeCallback(action, callback, argNames, mode);
+      const result = this.$cachedCallbackResultForSaga;
 
       // check if the callback return value is an iterable (usually a generator function)
       // if it is an iterable then consume it
