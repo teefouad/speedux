@@ -249,6 +249,10 @@ export const findPropInObject = (obj, pathStr, copyByRef = false, ...args) => {
       return result;
     }
 
+    if (typeof result[prop] === 'undefined') {
+      result[prop] = {};
+    }
+
     result[prop] = findPropInObject(result[prop], remainingPath, copyByRef, value);
 
     return result;
@@ -266,5 +270,7 @@ export const findPropInObject = (obj, pathStr, copyByRef = false, ...args) => {
     }
   }
 
-  return findPropInObject(result[prop], remainingPath, copyByRef);
+  // the `|| {}` part handles undefined values, it will return `undefined` instead
+  // of throwing an error
+  return findPropInObject(result[prop] || {}, remainingPath, copyByRef);
 };

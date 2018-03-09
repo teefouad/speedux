@@ -429,6 +429,14 @@ describe('findPropInObject', () => {
     expect(findPropInObject(obj, path)).toEqual(expected);
   });
 
+  it('should read: no existing key', () => {
+    const obj = {};
+    const path = 'foo.fiz.fuzz';
+    const expected = undefined;
+
+    expect(findPropInObject(obj, path)).toBe(expected);
+  });
+
   it('should write: empty string', () => {
     const obj = {
       foo: 'baz',
@@ -875,6 +883,20 @@ describe('findPropInObject', () => {
     };
 
     expect(findPropInObject(obj, path, false, 'foo')).toEqual(expected);
+  });
+
+  it('should write: no existing key', () => {
+    const obj = {};
+    const path = 'foo.fiz.fuzz';
+    const expected = {
+      foo: {
+        fiz: {
+          fuzz: 'boo',
+        },
+      },
+    };
+
+    expect(findPropInObject(obj, path, false, 'boo')).toEqual(expected);
   });
 
   it('should delete: empty string', () => {
