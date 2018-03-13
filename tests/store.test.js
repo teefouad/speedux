@@ -34,7 +34,7 @@ describe('store.js', () => {
   });
 
   it('should be able to add a reducer', () => {
-    const reducer = jest.fn();
+    const reducer = (state = {}) => state;
     StoreManager.addReducer('test', reducer);
     expect(StoreManager.reducers).toHaveProperty('test', reducer);
   });
@@ -46,8 +46,8 @@ describe('store.js', () => {
   });
 
   it('should be able to remove all reducers', () => {
-    StoreManager.addReducer('testA', jest.fn());
-    StoreManager.addReducer('testB', jest.fn());
+    StoreManager.addReducer('testA', (state = {}) => state);
+    StoreManager.addReducer('testB', (state = {}) => state);
     StoreManager.removeAllReducers();
     expect(StoreManager.reducers).toEqual({});
   });

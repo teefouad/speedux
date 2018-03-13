@@ -60,7 +60,6 @@ describe('connect.js', () => {
 
   it('should should add the configured reducer', () => {
     Connector.use({
-      update: jest.fn(),
       addReducer: jest.fn(),
     });
 
@@ -72,7 +71,6 @@ describe('connect.js', () => {
     });
 
     expect(Connector.storeManager.addReducer).toHaveBeenCalledWith('test', reducer);
-    expect(Connector.storeManager.update).toHaveBeenCalled();
   });
 
   it('should should inject an actions object into the props using a valid actionsKey', () => {

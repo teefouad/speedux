@@ -57,10 +57,12 @@ export const StoreManager = {
    */
   addReducer(name, reducer) {
     StoreManager.reducers[name] = reducer;
+    StoreManager.update();
   },
 
   /**
-   * Unregisters a reducer function.
+   * Unregisters a reducer function. If you remove a reducer, you have to explicitly
+   * call StoreManager.update() afterwars.
    * @param  {String}   key   Reducer unique identifier key.
    */
   removeReducer(name) {
