@@ -272,6 +272,7 @@ class Module {
 
     return callback.apply({
       getState: this.getState,
+      get state() { return this.getState(); },
     }, callbackArgs);
   }
 
