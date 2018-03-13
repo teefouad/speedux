@@ -35,6 +35,9 @@ class Module {
   // a hashmap of all the action creator functions for the module with the action
   // name in camelCase as the key and the action creator function as the value
   actions = {};
+  // a hashmap of all the action dispatchers for the module with the action
+  // name in camelCase as the key and the action dispatcher function as the value
+  dispatch = {};
   // a hashmap of all the saga generator functions for the module with the action
   // name in camelCase as the key and the generator function as the value
   sagas = {};
@@ -79,6 +82,10 @@ class Module {
 
     // register saga
     this.sagas[actionCreatorName] = this.sagaForAction(actionType);
+
+    // register a dispatcher
+    this.dispatch[actionCreatorName] = (...args) =>
+      this.store.dispatch(this.actions[actionCreatorName](...args));
   }
 
   /**
