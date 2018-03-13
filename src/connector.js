@@ -71,6 +71,7 @@ const Connector = {
     // default value for the stateKey is the component display name or function name
     // (component is stateless)
     const stateKey = (
+      (config.stateKey === null && 'state') ||
       config.stateKey ||
       (component.displayName && `${component.displayName.charAt(0).toLowerCase()}${component.displayName.slice(1)}`) ||
       (component.name && `${component.name.charAt(0).toLowerCase()}${component.name.slice(1)}`) ||
@@ -78,7 +79,7 @@ const Connector = {
     );
 
     // default value for the actionsKey is stateKey (more convenient).
-    const actionsKey = config.actionsKey || stateKey;
+    const actionsKey = config.actionsKey || (config.stateKey === null ? null : stateKey);
 
     // register reducer
     if (reducer && stateKey !== null) {
