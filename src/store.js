@@ -62,7 +62,7 @@ export const StoreManager = {
 
   /**
    * Unregisters a reducer function. If you remove a reducer, you have to explicitly
-   * call StoreManager.update() afterwars.
+   * call StoreManager.update() afterwards.
    * @param  {String}   key   Reducer unique identifier key.
    */
   removeReducer(name) {
@@ -70,7 +70,8 @@ export const StoreManager = {
   },
 
   /**
-   * Unregisters all reducer functions.
+   * Unregisters all reducer functions. If you remove all reducers, you have to explicitly
+   * call StoreManager.update() afterwards.
    */
   removeAllReducers() {
     Object.keys(StoreManager.reducers).forEach(name => StoreManager.removeReducer(name));
