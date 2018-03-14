@@ -141,7 +141,8 @@ class Module {
 
       // the saga handler will be called right after the reducer so instead of the saga
       // handler executing the callback again, pass it the cached result
-      this.$cachedCallbackResultForSaga = result;
+      this.$cachedCallbackResultForSaga = this.$cachedCallbackResultForSaga || {};
+      this.$cachedCallbackResultForSaga[actionType] = result;
 
       return this.mergeStates(state, stateFragment);
     }
@@ -173,7 +174,7 @@ class Module {
    */
   sagaForAction = actionType => function* saga() {
     yield takeLatest(actionType, function* sagaWorker(action) {
-      const result = this.$cachedCallbackResultForSaga;
+      const result = this.$cachedCallbackResultForSaga[actionType];
 
       // check if the callback return value is an iterable (usually a generator function)
       // if it is an iterable then consume it
