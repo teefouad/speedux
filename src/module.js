@@ -218,6 +218,8 @@ class Module {
             type: `${action.type}/COMPLETE`,
           });
         } catch (e) {
+          window.console.error(e);
+
           yield put({
             type: `${action.type}/ERROR`,
             message: e.message,
