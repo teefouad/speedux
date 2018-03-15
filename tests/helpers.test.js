@@ -1,5 +1,416 @@
 import * as helpers from '../src/helpers';
 
+describe('getArgNames', () => {
+  const { getArgNames } = helpers;
+
+  it('should parse: function () {}', () => {
+    const func = 'function () {}';
+    const expected = [];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function (foo) { }', () => {
+    const func = 'function (foo) { }';
+    const expected = ['foo'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function (foo = "baz") { }', () => {
+    const func = 'function (foo = "baz") { }';
+    const expected = ['foo'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function ({ foo }) { }', () => {
+    const func = 'function ({ foo }) { }';
+    const expected = ['foo'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function ({ foo = "baz" }) { }', () => {
+    const func = 'function ({ foo = "baz" }) { }';
+    const expected = ['foo'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function ({ foo:faa = "baz" }) { }', () => {
+    const func = 'function ({ foo:faa = "baz" }) { }';
+    const expected = ['faa'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function ({ foo:faa = {} }) { }', () => {
+    const func = 'function ({ foo:faa = {} }) { }';
+    const expected = ['faa'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function ({ foo:faa = function() {} }) { }', () => {
+    const func = 'function ({ foo:faa = function() {} }) { }';
+    const expected = ['faa'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function ({ foo:faa = () => { } }) { }', () => {
+    const func = 'function ({ foo:faa = () => { } }) { }';
+    const expected = ['faa'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function (a, b) { }', () => {
+    const func = 'function (a, b) { }';
+    const expected = ['a', 'b'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function (a, b = "abc") { }', () => {
+    const func = 'function (a, b = "abc") { }';
+    const expected = ['a', 'b'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function ({a, b}) { }', () => {
+    const func = 'function ({a, b}) { }';
+    const expected = ['a', 'b'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function ({a, b}, c) { }', () => {
+    const func = 'function ({a, b}, c) { }';
+    const expected = ['a', 'b', 'c'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function ({a, b = "abc"}) { }', () => {
+    const func = 'function ({a, b = "abc"}) { }';
+    const expected = ['a', 'b'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function ({ paramA, paramB = 100 }) { return () => { return 10; }; }', () => {
+    const func = 'function ({ paramA, paramB = 100 }) { return () => { return 10; }; }';
+    const expected = ['paramA', 'paramB'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function ({ a: paramA = {}, b = function () { }, c: paramC = () => { }, d = true, e = (2 + 3) }) { return () => { return 10; }; }', () => {
+    const func = 'function ({ a: paramA = {}, b = function () { }, c: paramC = () => { }, d = true, e = (2 + 3) }) { return () => { return 10; }; }';
+    const expected = ['paramA', 'b', 'paramC', 'd', 'e'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function ({ x = () => 10, y = s => s, z = function () { }, a = 10 }) { return () => 10; }', () => {
+    const func = 'function ({ x = () => 10, y = s => s, z = function () { }, a = 10 }) { return () => 10; }';
+    const expected = ['x', 'y', 'z', 'a'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function namedFunction({ paramA, paramB = 100, paramC = "abc" }) { return function() { return 10; } }', () => {
+    const func = 'function namedFunction({ paramA, paramB = 100, paramC = "abc" }) { return function() { return 10; } }';
+    const expected = ['paramA', 'paramB', 'paramC'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* () { }', () => {
+    const func = 'function* () { }';
+    const expected = [];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* (foo) { }', () => {
+    const func = 'function* (foo) { }';
+    const expected = ['foo'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* (foo = "baz") { }', () => {
+    const func = 'function* (foo = "baz") { }';
+    const expected = ['foo'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* ({ foo }) { }', () => {
+    const func = 'function* ({ foo }) { }';
+    const expected = ['foo'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* ({ foo = "baz" }) { }', () => {
+    const func = 'function* ({ foo = "baz" }) { }';
+    const expected = ['foo'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* ({ foo: faa = "baz" }) { }', () => {
+    const func = 'function* ({ foo: faa = "baz" }) { }';
+    const expected = ['faa'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* ({ foo: faa = {} }) { }', () => {
+    const func = 'function* ({ foo: faa = {} }) { }';
+    const expected = ['faa'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* ({ foo: faa = function () { } }) { }', () => {
+    const func = 'function* ({ foo: faa = function () { } }) { }';
+    const expected = ['faa'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* ({ foo: faa = () => { } }) { }', () => {
+    const func = 'function* ({ foo: faa = () => { } }) { }';
+    const expected = ['faa'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* (a, b) { }', () => {
+    const func = 'function* (a, b) { }';
+    const expected = ['a', 'b'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* (a, b = "abc") { }', () => {
+    const func = 'function* (a, b = "abc") { }';
+    const expected = ['a', 'b'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* ({ a, b }) { }', () => {
+    const func = 'function* ({ a, b }) { }';
+    const expected = ['a', 'b'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* ({ a, b }, c) { }', () => {
+    const func = 'function* ({ a, b }, c) { }';
+    const expected = ['a', 'b', 'c'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* ({ a, b = "abc" }) { }', () => {
+    const func = 'function* ({ a, b = "abc" }) { }';
+    const expected = ['a', 'b'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* ({ paramA, paramB = 100 }) { return () => { return 10; }; }', () => {
+    const func = 'function* ({ paramA, paramB = 100 }) { return () => { return 10; }; }';
+    const expected = ['paramA', 'paramB'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* ({ a: paramA = {}, b = function () { }, c: paramC = () => { }, d = true, e = (2 + 3) }) { return () => { return 10; }; }', () => {
+    const func = 'function* ({ a: paramA = {}, b = function () { }, c: paramC = () => { }, d = true, e = (2 + 3) }) { return () => { return 10; }; }';
+    const expected = ['paramA', 'b', 'paramC', 'd', 'e'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* ({ x = () => 10, y = s => s, z = function () { }, a = 10 }) { return () => 10; }', () => {
+    const func = 'function* ({ x = () => 10, y = s => s, z = function () { }, a = 10 }) { return () => 10; }';
+    const expected = ['x', 'y', 'z', 'a'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: function* namedFunction({ paramA, paramB = 100, paramC = "abc" }) { return function () { return 10; } }', () => {
+    const func = 'function* namedFunction({ paramA, paramB = 100, paramC = "abc" }) { return function () { return 10; } }';
+    const expected = ['paramA', 'paramB', 'paramC'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: () => { }', () => {
+    const func = '() => { }';
+    const expected = [];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: () => ({})', () => {
+    const func = '() => ({})';
+    const expected = [];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: foo => ({})', () => {
+    const func = 'foo => ({})';
+    const expected = ['foo'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: (foo) => { }', () => {
+    const func = '(foo) => { }';
+    const expected = ['foo'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: (foo = "baz") => { }', () => {
+    const func = '(foo = "baz") => { }';
+    const expected = ['foo'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: ({ foo }) => { }', () => {
+    const func = '({ foo }) => { }';
+    const expected = ['foo'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: ({ foo = "baz" }) => { }', () => {
+    const func = '({ foo = "baz" }) => { }';
+    const expected = ['foo'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: ({ foo: faa = "baz" }) => { }', () => {
+    const func = '({ foo: faa = "baz" }) => { }';
+    const expected = ['faa'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: ({ foo: faa = {} }) => { }', () => {
+    const func = '({ foo: faa = {} }) => { }';
+    const expected = ['faa'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: ({ foo: faa = function () { } }) => { }', () => {
+    const func = '({ foo: faa = function () { } }) => { }';
+    const expected = ['faa'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: ({ foo: faa = () => { } }) => { }', () => {
+    const func = '({ foo: faa = () => { } }) => { }';
+    const expected = ['faa'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: (a, b) => { }', () => {
+    const func = '(a, b) => { }';
+    const expected = ['a', 'b'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: (a, b = "abc") => { }', () => {
+    const func = '(a, b = "abc") => { }';
+    const expected = ['a', 'b'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: ({ a, b }) => { }', () => {
+    const func = '({ a, b }) => { }';
+    const expected = ['a', 'b'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: ({ a, b }, c) => { }', () => {
+    const func = '({ a, b }, c) => { }';
+    const expected = ['a', 'b', 'c'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: ({ a, b = "abc" }) => { }', () => {
+    const func = '({ a, b = "abc" }) => { }';
+    const expected = ['a', 'b'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: ({ paramA, paramB = 100 }) => { return () => { return 10; }; }', () => {
+    const func = '({ paramA, paramB = 100 }) => { return () => { return 10; }; }';
+    const expected = ['paramA', 'paramB'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: ({ paramA, paramB = 100 }) => () => { return 10; }', () => {
+    const func = '({ paramA, paramB = 100 }) => () => { return 10; }';
+    const expected = ['paramA', 'paramB'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: ({ a: paramA = {}, b = function () { }, c: paramC = () => { }, d = true, e = (2 + 3) }) => { return () => { return 10; }; }', () => {
+    const func = '({ a: paramA = {}, b = function () { }, c: paramC = () => { }, d = true, e = (2 + 3) }) => { return () => { return 10; }; }';
+    const expected = ['paramA', 'b', 'paramC', 'd', 'e'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: ({ x = () => 10, y = s => s, z = function () { }, a = 10 }) => { return () => 10; }', () => {
+    const func = '({ x = () => 10, y = s => s, z = function () { }, a = 10 }) => { return () => 10; }';
+    const expected = ['x', 'y', 'z', 'a'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+  it('should parse: ({ x = () => 10, y = s => s, z = function () { }, a = 10 }) => () => 10', () => {
+    const func = '({ x = () => 10, y = s => s, z = function () { }, a = 10 }) => () => 10';
+    const expected = ['x', 'y', 'z', 'a'];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+
+
+  it('should parse: "function"', () => {
+    const func = 'function';
+    const expected = [];
+
+    expect(getArgNames(func)).toEqual(expected);
+  });
+});
+
 describe('findPropInObject', () => {
   const { findPropInObject } = helpers;
 

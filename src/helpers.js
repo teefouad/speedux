@@ -9,36 +9,49 @@ export const getArgNames = (func) => {
 
   // `params` is a comma-separated string representing the
   // parameters that the function expects
-  let params = (str.match(/function(.*?)\(+(.*?)\)+\{+(.*?)\}+/) || [])[2];
+  let params = '';
 
-  // not a normal function, check if it is an arrow function
-  if (!params) {
-    if (str[0] === '(') {
-      let i = 1;
-      let p = 1;
+  // check if the input is a normal function
+  if (str.startsWith('function')) {
+    let i = str.indexOf('(');
+    let p = 0; // number of open parentheses
 
-      for (; i < str.length; i += 1) {
-        if (str[i] === '(') p += 1;
-        if (str[i] === ')') p -= 1;
-        if (str[i] === '=' && str[i + 1] === '>' && p === 0) {
-          params = str.slice(0, i);
-          break;
-        }
+    for (; i < str.length; i += 1) {
+      if (str[i] === '(') p += 1;
+      if (str[i] === ')') p -= 1;
+      if (p === 0) {
+        params = str.slice(str.indexOf('('), i + 1);
+        break;
       }
-    } else {
-      [params] = (str.match(/(.*?)(?==>)/) || []);
     }
+  } else
+  // not a normal function, check if it is an arrow function
+  if (str[0] === '(') {
+    let i = 0;
+    let p = 0; // number of open parentheses
+
+    for (; i < str.length; i += 1) {
+      if (str[i] === '(') p += 1;
+      if (str[i] === ')') p -= 1;
+      if (str[i] === '=' && str[i + 1] === '>' && p === 0) {
+        params = str.slice(0, i);
+        break;
+      }
+    }
+  } else {
+    [params] = (str.match(/(.*?)(?==>)/) || []);
   }
 
-  // handle destructuring, renaming and default values
-  // [{}()\s]     -> destructuring
-  // (.*?):       -> renaming
-  // =(.*?)(?=,)  -> default values
-  // =(.*?)$      -> last parameter default value
-  params = params && params.replace(/[{}()\s]|(.*?):|=(.*?)(?=,)|=(.*?)$/g, '');
+  // clear destructuring and parentheses
+  params = params && params.replace(/[{}()\s]/g, '');
 
-  // return an array of parameters
-  return (params && params.split(',')) || [];
+  // convert to an array of un-clean parameters
+  params = (params && params.split(',')) || [];
+
+  // clean and return the parameters
+  // (.*?): -> handle renaming
+  // =.*$   -> handle default values
+  return params.map(param => param.replace(/(.*?):/, '').replace(/=.*$/, ''));
 };
 
 /**
