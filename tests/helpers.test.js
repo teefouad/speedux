@@ -411,6 +411,67 @@ describe('getArgNames', () => {
   });
 });
 
+describe('getObjectType', () => {
+  const { getObjectType } = helpers;
+
+  it('should return "object" for an object', () => {
+    const obj = {};
+    const expected = 'object';
+
+    expect(getObjectType(obj)).toEqual(expected);
+  });
+
+  it('should return "function" for a function', () => {
+    const obj = function () { };
+    const expected = 'function';
+
+    expect(getObjectType(obj)).toEqual(expected);
+  });
+
+  it('should return "function" for an arrow function', () => {
+    const obj = () => {};
+    const expected = 'function';
+
+    expect(getObjectType(obj)).toEqual(expected);
+  });
+
+  it('should return "boolean" for a boolean', () => {
+    const obj = true;
+    const expected = 'boolean';
+
+    expect(getObjectType(obj)).toEqual(expected);
+  });
+
+  it('should return "string" for a string', () => {
+    const obj = 'foo';
+    const expected = 'string';
+
+    expect(getObjectType(obj)).toEqual(expected);
+  });
+
+  it('should return "number" for a number', () => {
+    const obj = 10;
+    const expected = 'number';
+
+    expect(getObjectType(obj)).toEqual(expected);
+  });
+
+  it('should return "undefined" for undefined', () => {
+    const obj = undefined;
+    const expected = 'undefined';
+
+    expect(getObjectType(obj)).toEqual(expected);
+  });
+
+  it('should return "object" for null', () => {
+    const obj = null;
+    const expected = 'null';
+
+    expect(getObjectType(obj)).toEqual(expected);
+  });
+
+});
+
 describe('findPropInObject', () => {
   const { findPropInObject } = helpers;
 
