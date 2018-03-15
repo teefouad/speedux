@@ -469,7 +469,6 @@ describe('getObjectType', () => {
 
     expect(getObjectType(obj)).toEqual(expected);
   });
-
 });
 
 describe('findPropInObject', () => {
@@ -907,6 +906,18 @@ describe('findPropInObject', () => {
     const expected = undefined;
 
     expect(findPropInObject(obj, path)).toBe(expected);
+  });
+
+  it('should read: foo by reference', () => {
+    const obj = {
+      foo: 'baz',
+      fiz: 'buzz',
+      fae: 'beez',
+    };
+    const path = 'foo';
+    const result = findPropInObject(obj, path, true);
+
+    expect(result).toBe('baz');
   });
 
   it('should write: empty string', () => {
@@ -1371,6 +1382,23 @@ describe('findPropInObject', () => {
     expect(findPropInObject(obj, path, false, 'boo')).toEqual(expected);
   });
 
+  it('should write: foo by reference', () => {
+    const obj = {
+      foo: 'baz',
+      fiz: 'buzz',
+      fae: 'beez',
+    };
+    const path = 'foo';
+    const result = findPropInObject(obj, path, true, 'boo');
+
+    expect(result).toBe(obj);
+    expect(obj).toEqual({
+      foo: 'boo',
+      fiz: 'buzz',
+      fae: 'beez',
+    });
+  });
+
   it('should delete: empty string', () => {
     const obj = {
       foo: 'baz',
@@ -1787,6 +1815,22 @@ describe('findPropInObject', () => {
     };
 
     expect(findPropInObject(obj, path, false, undefined)).toEqual(expected);
+  });
+
+  it('should delete: foo by reference', () => {
+    const obj = {
+      foo: 'baz',
+      fiz: 'buzz',
+      fae: 'beez',
+    };
+    const path = 'foo';
+    const result = findPropInObject(obj, path, true, undefined);
+
+    expect(result).toBe(obj);
+    expect(obj).toEqual({
+      fiz: 'buzz',
+      fae: 'beez',
+    });
   });
 
   it('should resolve: * where * is an object', () => {
@@ -2240,5 +2284,23 @@ describe('findPropInObject', () => {
     };
 
     expect(findPropInObject(obj, path, false, resolver)).toEqual(expected);
+  });
+
+  it('should resolve: foo by reference', () => {
+    const obj = {
+      foo: 'baz',
+      fiz: 'buzz',
+      fae: 'beez',
+    };
+    const path = 'foo';
+    const resolver = x => x.slice(2);
+    const result = findPropInObject(obj, path, true, resolver);
+
+    expect(result).toBe(obj);
+    expect(obj).toEqual({
+      foo: 'z',
+      fiz: 'buzz',
+      fae: 'beez',
+    });
   });
 });

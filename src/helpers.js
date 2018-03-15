@@ -181,17 +181,6 @@ export const findDirectPropInObject = (obj, prop, copyByRef = false, ...args) =>
     return result;
   }
 
-  // copy by value, if required
-  if (!copyByRef) {
-    if (propType === 'array') {
-      return [...result[prop]];
-    }
-
-    if (propType === 'object') {
-      return { ...result[prop] };
-    }
-  }
-
   // return the value of the prop
   return result[prop];
 };
