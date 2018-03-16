@@ -12,7 +12,6 @@ describe('store.js', () => {
 
   it('should return a store instance when calling getInstance()', () => {
     const store = StoreManager.getInstance();
-    expect(store).not.toBeUndefined();
     expect(store).toMatchObject({
       dispatch: expect.any(Function),
       getState: expect.any(Function),
@@ -40,7 +39,7 @@ describe('store.js', () => {
   });
 
   it('should be able to remove a reducer', () => {
-    StoreManager.reducers.test = jest.fn();
+    StoreManager.reducers.test = (state = {}) => state;
     StoreManager.removeReducer('test');
     expect(StoreManager.reducers.test).toBeUndefined();
   });
@@ -52,24 +51,33 @@ describe('store.js', () => {
     expect(StoreManager.reducers).toEqual({});
   });
 
+  it('should be return a root reducer function', () => {
+    const rootReducer = StoreManager.getRootReducer();
+    expect(rootReducer).toBeInstanceOf(Function);
+  });
+
   it('should be able to create a valid root reducer', () => {
     const rootReducer = StoreManager.getRootReducer();
     const state = { $_foo: {} };
     const newState = rootReducer(state);
-    expect(rootReducer).toBeInstanceOf(Function);
     expect(newState).toBe(state);
   });
 
-  it('should call all added reducers when an action is dispatched', () => {
-    const reducer = jest.fn();
-    reducer.mockReturnValue({});
+  it('should call added reducers when an action is dispatched', () => {
+    const reducer = jest.fn((state = {}) => state);
     StoreManager.addReducer('test', reducer);
-    StoreManager.update();
     StoreManager.getInstance().dispatch({ type: 'FOO' });
-    expect(reducer).toHaveBeenCalled();
+    expect(reducer).toHaveBeenCalledWith({}, { type: 'FOO' });
   });
 
-  it('should export a store instance', () => {
+  it('should be able to run a given saga', () => {
+    const saga = jest.fn(function* testSaga() { });
+    StoreManager.runSaga(saga);
+    StoreManager.getInstance().dispatch({ type: 'FOO' });
+    expect(saga).toHaveBeenCalled();
+  });
+
+  it('should export a store instance by default', () => {
     expect(storeInstance).toMatchObject({
       dispatch: expect.any(Function),
       getState: expect.any(Function),
