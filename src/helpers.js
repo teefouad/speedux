@@ -76,7 +76,6 @@ export const getObjectType = (obj) => {
  */
 export const findDirectPropInObject = (obj, prop, copyByRef = false, ...args) => {
   const type = getObjectType(obj);
-  const propType = getObjectType(obj[prop]);
   const shouldReplace = args.length > 0;
   const value = args[0];
 
