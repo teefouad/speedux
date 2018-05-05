@@ -116,13 +116,13 @@ class Module {
     const mainActionType = (actionType.match(/@@(.*?)\/((.*?)(?=\/)|(.*?)$)/) || [])[0] || actionType;
     const subActionType = actionType.replace(mainActionType, '').slice(1);
 
-    // if the sub action is 'update', just update the state with the payload object
-    if (subActionType === 'UPDATE') {
-      return this.mergeStates(state, action.payload || {});
-    }
-
     // if it's a main action, look for a sub reducer that can handle this action
     if (typeof this.subReducers[mainActionType] !== 'undefined') {
+      // if the sub action is 'update', just update the state with the payload object
+      if (subActionType === 'UPDATE') {
+        return this.mergeStates(state, action.payload || {});
+      }
+
       return this.subReducers[mainActionType](state, action);
     }
 
