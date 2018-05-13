@@ -6,6 +6,11 @@ import { bindActionCreators } from 'redux';
 import { connect as reduxConnect } from 'react-redux';
 
 /**
+ * Local imports.
+ */
+import { getComponentName } from './helpers';
+
+/**
  * This is a wrapper object that allows connecting components to a Redux store.
  * First, set a reference to a StorManage object using `Connector.use()` then
  * use `Connector.connect()`.
@@ -37,6 +42,7 @@ const Connector = {
    *                                - sagas           Reference to the sagas object. This is a
    *                                                  hash table of generator functions, each
    *                                                  represents a saga.
+   *                                - name            Key to be used to extract the state object.
    *                                - stateKey        Namespace that will be used to pass component
    *                                                  state via props.
    *                                - actionsKey      Namespace that will be used to pass component
@@ -63,53 +69,55 @@ const Connector = {
     const reducer = config.reducer || ((state = {}) => state);
 
     // default value for the actions object is an empty object (no actions).
-    const actions = config.actions || {};
+    const actions = config.actionCreators || {};
 
     // default value for the sagas object is an empty object (no sagas).
     const sagas = config.sagas || {};
 
+    // get the component name
+    const componentName = getComponentName(component);
+
     // default value for the stateKey is the component display name or function name
     // (component is stateless)
-    const stateKey = (
-      (config.stateKey === null && 'state') ||
-      config.stateKey ||
-      (component.displayName && `${component.displayName.charAt(0).toLowerCase()}${component.displayName.slice(1)}`) ||
-      (component.name && `${component.name.charAt(0).toLowerCase()}${component.name.slice(1)}`) ||
-      null
-    );
+    const stateKey = (config.stateKey === 'auto' ? componentName : config.stateKey);
 
-    // default value for the actionsKey is stateKey (more convenient).
-    const actionsKey = config.actionsKey || (config.stateKey === null ? null : stateKey);
+    // default value for the actionsKey is the same as stateKey
+    const actionsKey = (config.actionsKey === 'auto' ? componentName : config.actionsKey);
+
+    // default value for the name is the same as stateKey
+    const name = (config.name === '' ? componentName : config.name);
 
     // register reducer
-    if (reducer && stateKey !== null) {
-      Connector.storeManager.addReducer(stateKey, reducer);
+    if (reducer && name) {
+      Connector.storeManager.addReducer(name, reducer);
     }
 
     // maps component state to component props
-    const mapStateToProps = (stateKey === null ? null : state => ({
-      [stateKey]: state[stateKey],
-    }));
+    const mapStateToProps = (stateKey ? state => ({
+      [stateKey]: state[name],
+    }) : null);
 
     // maps component actions to dispatchProps
     const mapDispatchToProps = dispatch => bindActionCreators(actions, dispatch);
 
     // combines component props, mapped props from state and mapped props from dispatchProps
     const combineProps = (stateProps, dispatchProps, ownProps) => {
-      let actionProps = { ...dispatchProps };
-
-      if (actionsKey !== null) {
-        actionProps = {
-          ...ownProps.actions,
-          [actionsKey]: dispatchProps,
-        };
-      }
-
-      return {
+      const newProps = {
         ...ownProps,
         ...stateProps,
-        actions: actionProps,
       };
+
+      if (actionsKey) {
+        if (actionsKey === stateKey) {
+          newProps.actions = {
+            [actionsKey]: { ...dispatchProps },
+          };
+        } else {
+          newProps[actionsKey] = { ...dispatchProps };
+        }
+      }
+
+      return newProps;
     };
 
     // get the connected component

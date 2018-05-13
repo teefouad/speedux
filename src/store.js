@@ -84,7 +84,7 @@ export const StoreManager = {
   getRootReducer() {
     const reducers = { ...StoreManager.reducers };
 
-    if (Object.keys(reducers).length === 0 || process.env.NODE_ENV === 'jest') {
+    if (Object.keys(reducers).length === 0 || process.env.NODE_ENV === 'test') {
       reducers.$_foo = (state = {}) => state; // default reducer
     }
 

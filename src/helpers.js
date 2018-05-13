@@ -275,3 +275,73 @@ export const findPropInObject = (obj, pathStr, copyByRef = false, ...args) => {
   // of throwing an error
   return findPropInObject(result[prop] || {}, remainingPath, copyByRef);
 };
+
+/**
+ * Converts any string to camel-case format.
+ * @param {String}  str String to convert.
+ * @return {String}     The formatted string.
+ */
+export const toCamelCase = (str) => {
+  // remove spaces, dashes and underscores from the begining of the string
+  // /^[A-Z]+$/ -> lowercases the string if it's all uppercase
+  const cleanString = str.replace(/[^\w\s_-]/g, '').replace(/^[A-Z]+$/, w => w.toLowerCase());
+
+  // if it's in snakecase, convert it to camelcase
+  if (/(.*?)[\s_-]/.test(cleanString)) {
+    const parts = cleanString.replace(/[\s_-]|[a-z](?=[A-Z])/g, w => (/[\s_-]/.test(w) ? ':' : `${w}:`)).split(':');
+    const transformedParts = parts.map((w, i) => (i === 0 ? w.toLowerCase() : `${w[0].toUpperCase()}${w.slice(1).toLowerCase()}`));
+    return transformedParts.join('');
+  } else
+  // if it's already in camelcase, return it
+  if (/([a-z][A-Z])+/.test(cleanString)) {
+    return cleanString;
+  }
+
+  return cleanString;
+};
+
+/**
+ * Converts any string to snake-case format.
+ * @param {String}  str String to convert.
+ * @return {String}     The formatted string.
+ */
+export const toSnakeCase = (str) => {
+  const camelCase = toCamelCase(str);
+  return camelCase.replace(/[a-z](?=[A-Z])/g, w => `${w[0]}_`).toLowerCase();
+};
+
+/**
+ * Deep-copies an object or an array.
+ * @param {Object | Array} obj Object or Array to copy.
+ */
+export const deepCopy = (obj) => {
+  const type = getObjectType(obj);
+
+  if (type === 'object' || type === 'array') {
+    const newObj = (type === 'array' ? [] : {});
+
+    Object.keys(obj).forEach((key) => {
+      if (['object', 'array'].includes(getObjectType(obj[key]))) {
+        newObj[key] = deepCopy(obj[key]);
+      } else {
+        newObj[key] = obj[key];
+      }
+    });
+
+    return newObj;
+  }
+
+  return obj;
+};
+
+/**
+ * Generates a component name based on the display name of the component or the function
+ * name if it's a functional component.
+ * @param   {Object}  component Target component.
+ * @return  {String}            Component name as a string or null.
+ */
+export const getComponentName = (component) => {
+  const displayName = component.displayName && `${component.displayName[0].toLowerCase()}${component.displayName.slice(1)}`;
+  const functionName = component.name && `${component.name[0].toLowerCase()}${component.name.slice(1)}`;
+  return displayName || functionName || null;
+};
