@@ -66,7 +66,7 @@ describe('connect.js', () => {
     const reducer = (state = {}) => state;
 
     Connector.connect(getMockComponent(), {
-      stateKey: 'test',
+      name: 'test',
       reducer,
     });
 
@@ -84,7 +84,7 @@ describe('connect.js', () => {
     });
     const instance = renderer.create(<ConnectedComponent store={mockStore()} />);
 
-    expect(instance.root.children[0].props).toHaveProperty('actions.test', expect.any(Object));
+    expect(instance.root.children[0].props).toHaveProperty('test', expect.any(Object));
   });
 
   it('should map action creators to the action object that is injected into the props', () => {
@@ -95,13 +95,13 @@ describe('connect.js', () => {
 
     const ConnectedComponent = Connector.connect(getMockComponent(), {
       actionsKey: 'test',
-      actions: {
+      actionCreators: {
         changeFoo: () => ({ type: 'CHANGE_FOO' }),
       },
     });
     const instance = renderer.create(<ConnectedComponent store={mockStore()} />);
 
-    expect(instance.root.children[0].props).toHaveProperty('actions.test.changeFoo', expect.any(Function));
+    expect(instance.root.children[0].props).toHaveProperty('test.changeFoo', expect.any(Function));
   });
 
   it('should should inject a state object into the props using a valid stateKey', () => {
@@ -111,6 +111,7 @@ describe('connect.js', () => {
     });
 
     const ConnectedComponent = Connector.connect(getMockComponent(), {
+      name: 'test',
       stateKey: 'test',
       reducer: (state = {}) => state,
     });
@@ -126,6 +127,7 @@ describe('connect.js', () => {
     });
 
     const ConnectedComponent = Connector.connect(getMockComponent(), {
+      name: 'test',
       stateKey: 'test',
       reducer: (state = {}) => state,
     });
@@ -134,24 +136,7 @@ describe('connect.js', () => {
     expect(instance.root.children[0].props).toHaveProperty('test.foo', 'baz');
   });
 
-  it('should use the stateKey as the actionsKey if actionsKey is not configured', () => {
-    Connector.use({
-      update: () => null,
-      addReducer: () => null,
-    });
-
-    const ConnectedComponent = Connector.connect(getMockComponent(), {
-      stateKey: 'test',
-      actions: {
-        changeFoo: () => ({ type: 'CHANGE_FOO' }),
-      },
-    });
-    const instance = renderer.create(<ConnectedComponent store={mockStore()} />);
-
-    expect(instance.root.children[0].props).toHaveProperty('actions.test.changeFoo', expect.any(Function));
-  });
-
-  it('should try to create a stateKey if it is not configured', () => {
+  it('should try to create a stateKey if it is set to auto', () => {
     Connector.use({
       update: () => null,
       addReducer: () => null,
@@ -159,30 +144,33 @@ describe('connect.js', () => {
 
     const test = () => <div />;
 
-    const ConnectedComponent = Connector.connect(test, {});
+    const ConnectedComponent = Connector.connect(test, {
+      name: 'test',
+      stateKey: 'auto',
+    });
     const instance = renderer.create(<ConnectedComponent store={mockStore({ test: {} })} />);
 
     expect(instance.root.children[0].props).toHaveProperty('test', expect.any(Object));
   });
 
-  it('should not override an `actions` property object if it is already defined', () => {
+  it('should use an `actions` property object if the state and actions keys are equal', () => {
     Connector.use({
       update: () => null,
       addReducer: () => null,
     });
 
     const ConnectedComponent = Connector.connect(getMockComponent(), {
+      name: 'test',
       stateKey: 'test',
-      actions: {
+      actionsKey: 'test',
+      actionCreators: {
         baz: () => null,
       },
     });
     const instance = renderer.create(<ConnectedComponent
-      actions={{ foo: () => null }}
       store={mockStore()}
     />);
 
-    expect(instance.root.children[0].props).toHaveProperty('actions.foo', expect.any(Function));
     expect(instance.root.children[0].props).toHaveProperty('actions.test.baz', expect.any(Function));
   });
 });
