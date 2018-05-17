@@ -1,3 +1,4 @@
+import React, { Component } from 'react';
 import * as helpers from '../src/helpers';
 
 describe('getArgNames', () => {
@@ -402,7 +403,6 @@ describe('getArgNames', () => {
     expect(getArgNames(func)).toEqual(expected);
   });
 
-
   it('should parse: "function"', () => {
     const func = 'function';
     const expected = [];
@@ -422,15 +422,22 @@ describe('getObjectType', () => {
   });
 
   it('should return "function" for a function', () => {
-    const obj = function () { };
+    const obj = function foo() { };
     const expected = 'function';
 
     expect(getObjectType(obj)).toEqual(expected);
   });
 
   it('should return "function" for an arrow function', () => {
-    const obj = () => {};
+    const obj = () => { };
     const expected = 'function';
+
+    expect(getObjectType(obj)).toEqual(expected);
+  });
+
+  it('should return "generatorfunction" for a generator function', () => {
+    const obj = function* generator() { yield null; };
+    const expected = 'generatorfunction';
 
     expect(getObjectType(obj)).toEqual(expected);
   });
@@ -468,86 +475,6 @@ describe('getObjectType', () => {
     const expected = 'null';
 
     expect(getObjectType(obj)).toEqual(expected);
-  });
-});
-
-describe('toCamelCase', () => {
-  const { toCamelCase } = helpers;
-
-  it('should convert: foo', () => {
-    expect(toCamelCase('foo')).toBe('foo');
-  });
-
-  it('should convert: fooBaz', () => {
-    expect(toCamelCase('fooBaz')).toBe('fooBaz');
-  });
-
-  it('should convert: foo baz', () => {
-    expect(toCamelCase('foo baz')).toBe('fooBaz');
-  });
-
-  it('should convert: foo-baz', () => {
-    expect(toCamelCase('foo-baz')).toBe('fooBaz');
-  });
-
-  it('should convert: foo_baz', () => {
-    expect(toCamelCase('foo_baz')).toBe('fooBaz');
-  });
-
-  it('should convert: FIZ_BAZ', () => {
-    expect(toCamelCase('FIZ_BAZ')).toBe('fizBaz');
-  });
-
-  it('should convert: foo_bazDo', () => {
-    expect(toCamelCase('foo_bazDo')).toBe('fooBazDo');
-  });
-
-  it('should convert: foo_bazDo Something', () => {
-    expect(toCamelCase('foo_bazDo Something')).toBe('fooBazDoSomething');
-  });
-
-  it('should convert: foo_baz-Do SomeThing', () => {
-    expect(toCamelCase('foo_baz-Do SomeThing')).toBe('fooBazDoSomeThing');
-  });
-});
-
-describe('toSnakeCase', () => {
-  const { toSnakeCase } = helpers;
-
-  it('should convert: foo', () => {
-    expect(toSnakeCase('foo')).toBe('foo');
-  });
-
-  it('should convert: fooBaz', () => {
-    expect(toSnakeCase('fooBaz')).toBe('foo_baz');
-  });
-
-  it('should convert: foo baz', () => {
-    expect(toSnakeCase('foo baz')).toBe('foo_baz');
-  });
-
-  it('should convert: foo-baz', () => {
-    expect(toSnakeCase('foo-baz')).toBe('foo_baz');
-  });
-
-  it('should convert: foo_baz', () => {
-    expect(toSnakeCase('foo_baz')).toBe('foo_baz');
-  });
-
-  it('should convert: foo_bazDo', () => {
-    expect(toSnakeCase('foo_bazDo')).toBe('foo_baz_do');
-  });
-
-  it('should convert: foo_bazDo Something', () => {
-    expect(toSnakeCase('foo_bazDo Something')).toBe('foo_baz_do_something');
-  });
-
-  it('should convert: foo_baz-Do SomeThing', () => {
-    expect(toSnakeCase('foo_baz-Do SomeThing')).toBe('foo_baz_do_some_thing');
-  });
-
-  it('should convert: FOO uppercase', () => {
-    expect(toSnakeCase('FOO')).toBe('foo');
   });
 });
 
@@ -2382,5 +2309,197 @@ describe('findPropInObject', () => {
       fiz: 'buzz',
       fae: 'beez',
     });
+  });
+});
+
+describe('toCamelCase', () => {
+  const { toCamelCase } = helpers;
+
+  it('should convert: foo', () => {
+    expect(toCamelCase('foo')).toBe('foo');
+  });
+
+  it('should convert: fooBaz', () => {
+    expect(toCamelCase('fooBaz')).toBe('fooBaz');
+  });
+
+  it('should convert: fooBazFiz', () => {
+    expect(toCamelCase('fooBazFiz')).toBe('fooBazFiz');
+  });
+
+  it('should convert: foo baz', () => {
+    expect(toCamelCase('foo baz')).toBe('fooBaz');
+  });
+
+  it('should convert: foo-baz', () => {
+    expect(toCamelCase('foo-baz')).toBe('fooBaz');
+  });
+
+  it('should convert: foo_baz', () => {
+    expect(toCamelCase('foo_baz')).toBe('fooBaz');
+  });
+
+  it('should convert: FIZ_BAZ', () => {
+    expect(toCamelCase('FIZ_BAZ')).toBe('fizBaz');
+  });
+
+  it('should convert: doFIZ_Baz', () => {
+    expect(toCamelCase('doFIZ_Baz')).toBe('doFizBaz');
+  });
+
+  it('should convert: foo_bazDo', () => {
+    expect(toCamelCase('foo_bazDo')).toBe('fooBazDo');
+  });
+
+  it('should convert: foo_bazDo Something', () => {
+    expect(toCamelCase('foo_bazDo Something')).toBe('fooBazDoSomething');
+  });
+
+  it('should convert: foo_baz-Do SomeThing', () => {
+    expect(toCamelCase('foo_baz-Do SomeThing')).toBe('fooBazDoSomeThing');
+  });
+});
+
+describe('toSnakeCase', () => {
+  const { toSnakeCase } = helpers;
+
+  it('should convert: foo', () => {
+    expect(toSnakeCase('foo')).toBe('foo');
+  });
+
+  it('should convert: fooBaz', () => {
+    expect(toSnakeCase('fooBaz')).toBe('foo_baz');
+  });
+
+  it('should convert: foo baz', () => {
+    expect(toSnakeCase('foo baz')).toBe('foo_baz');
+  });
+
+  it('should convert: foo-baz', () => {
+    expect(toSnakeCase('foo-baz')).toBe('foo_baz');
+  });
+
+  it('should convert: foo_baz', () => {
+    expect(toSnakeCase('foo_baz')).toBe('foo_baz');
+  });
+
+  it('should convert: foo_bazDo', () => {
+    expect(toSnakeCase('foo_bazDo')).toBe('foo_baz_do');
+  });
+
+  it('should convert: foo_bazDo Something', () => {
+    expect(toSnakeCase('foo_bazDo Something')).toBe('foo_baz_do_something');
+  });
+
+  it('should convert: foo_baz-Do SomeThing', () => {
+    expect(toSnakeCase('foo_baz-Do SomeThing')).toBe('foo_baz_do_some_thing');
+  });
+
+  it('should convert: FOO uppercase', () => {
+    expect(toSnakeCase('FOO')).toBe('foo');
+  });
+});
+
+describe('deepCopy', () => {
+  const { deepCopy } = helpers;
+
+  it('should copy one level deep object', () => {
+    const obj = { foo: 'FOO', baz: 'BAZ' };
+    expect(deepCopy(obj)).toEqual(obj);
+    expect(deepCopy(obj)).not.toBe(obj);
+  });
+
+  it('should copy two levels deep object', () => {
+    const obj = {
+      foo: 'FOO',
+      baz: 'BAZ',
+      fiz: {
+        foo: 'FOO',
+        baz: 'BAZ',
+      },
+    };
+    expect(deepCopy(obj).fiz).toEqual(obj.fiz);
+    expect(deepCopy(obj).fiz).not.toBe(obj.fiz);
+  });
+
+  it('should copy three levels deep object', () => {
+    const obj = {
+      foo: 'FOO',
+      baz: 'BAZ',
+      fiz: {
+        foo: 'FOO',
+        baz: 'BAZ',
+        fae: {
+          foo: 'FOO',
+          baz: 'BAZ',
+        },
+      },
+    };
+    expect(deepCopy(obj).fiz.fae).toEqual(obj.fiz.fae);
+    expect(deepCopy(obj).fiz.fae).not.toBe(obj.fiz.fae);
+  });
+
+  it('should copy an array', () => {
+    const obj = ['foo', 'baz', 'fiz'];
+    expect(deepCopy(obj)).toEqual(obj);
+    expect(deepCopy(obj)).not.toBe(obj);
+  });
+
+  it('should copy an array of objects', () => {
+    const obj = [
+      'foo',
+      'baz',
+      {
+        foo: 'FOO',
+        baz: 'BAZ',
+      },
+    ];
+    expect(deepCopy(obj[2])).toEqual(obj[2]);
+    expect(deepCopy(obj[2])).not.toBe(obj[2]);
+  });
+
+  it('should copy an array of two levels deep objects', () => {
+    const obj = [
+      'foo',
+      'baz',
+      {
+        foo: 'FOO',
+        baz: 'BAZ',
+        fiz: {
+          foo: 'FOO',
+          baz: 'BAZ',
+        },
+      },
+    ];
+    expect(deepCopy(obj[2].fiz)).toEqual(obj[2].fiz);
+    expect(deepCopy(obj[2].fiz)).not.toBe(obj[2].fiz);
+  });
+});
+
+describe('getComponentName', () => {
+  const { getComponentName } = helpers;
+
+  it('should return a functional component name', () => {
+    const component = function Foo() {};
+    expect(getComponentName(component)).toEqual('foo');
+  });
+
+  it('should return a functional component name', () => {
+    const component = function FooBaz() {};
+    expect(getComponentName(component)).toEqual('fooBaz');
+  });
+
+  it('should return a functional component name', () => {
+    const FizFaz = () => null;
+    expect(getComponentName(FizFaz)).toEqual('fizFaz');
+  });
+
+  it('should return a functional component name', () => {
+    class FizFazFoo extends Component {
+      render() {
+        return <div>{ this.displayName }</div>;
+      }
+    }
+    expect(getComponentName(FizFazFoo)).toEqual('fizFazFoo');
   });
 });
