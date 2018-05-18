@@ -58,7 +58,7 @@ describe('connect.js', () => {
     expect(fn).toThrowError('Expected a valid StoreManager to be used before calling `connect`.');
   });
 
-  it('should should add the configured reducer', () => {
+  it('should add the configured reducer', () => {
     Connector.use({
       addReducer: jest.fn(),
     });
@@ -73,7 +73,7 @@ describe('connect.js', () => {
     expect(Connector.storeManager.addReducer).toHaveBeenCalledWith('test', reducer);
   });
 
-  it('should should inject an actions object into the props using a valid actionsKey', () => {
+  it('should inject an actions object into the props using a valid actionsKey', () => {
     Connector.use({
       update: () => null,
       addReducer: () => null,
@@ -102,9 +102,10 @@ describe('connect.js', () => {
     const instance = renderer.create(<ConnectedComponent store={mockStore()} />);
 
     expect(instance.root.children[0].props).toHaveProperty('test.changeFoo', expect.any(Function));
+    expect(instance.root.children[0].props.test.changeFoo()).toMatchObject({ type: 'CHANGE_FOO' });
   });
 
-  it('should should inject a state object into the props using a valid stateKey', () => {
+  it('should inject a state object into the props using a valid stateKey', () => {
     Connector.use({
       update: () => null,
       addReducer: () => null,
