@@ -11,23 +11,29 @@ import {
 import createSagaMiddleware from 'redux-saga';
 
 /**
+ * Reference to hold the Redux store instance.
+ * @type {Object}
+ */
+let storeInstance;
+
+/**
  * Creates the saga middleware function.
  * @type {Function}
  */
-const sagaMiddleware = createSagaMiddleware();
+export const sagaMiddleware = createSagaMiddleware();
+
+/**
+ * Creates the saga store enhancer.
+ * @type {Function}
+ */
+export const sagaEnhancer = applyMiddleware(sagaMiddleware);
 
 /**
  * Creates a middleware function that is used to enable Redux devTools.
  * in the browser.
  * @type {Function}
  */
-const devTools = compose(window.devToolsExtension ? window.devToolsExtension() : foo => foo);
-
-/**
- * Reference to hold the Redux store instance.
- * @type {Object}
- */
-let storeInstance;
+export const devTools = compose(window.devToolsExtension ? window.devToolsExtension() : foo => foo);
 
 /**
  * This is not the actual store. This is a wrapper object that manages
@@ -48,7 +54,7 @@ export const StoreManager = {
    * Use `useMiddleware` method to add other middleware functions to this list.
    * @type {Array}
    */
-  middleWares: [applyMiddleware(sagaMiddleware), devTools],
+  middleWares: [sagaEnhancer, devTools],
 
   /**
    * Registers a reducer function.
