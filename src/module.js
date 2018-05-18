@@ -61,6 +61,7 @@ export default class Module {
   config = (options) => {
     const config = {
       ...Module.defaults,
+      ...this.currentConfig,
       ...options,
     };
 

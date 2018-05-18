@@ -55,7 +55,11 @@ export function connect(component, module) {
  * @param {Object}    config          An object that represents the module configuration.
  * @return  {Object}                  The module object.
  */
-export function createModule(config) {
+export function createModule(config = {}) {
+  if (helpers.getObjectType(config) !== 'object') {
+    throw new Error('Module configuration must be an object');
+  }
+
   return new Module({
     ...config,
     store,
