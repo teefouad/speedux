@@ -1,4 +1,8 @@
-import storeInstance, { StoreManager } from '../src/store';
+import storeInstance, {
+  StoreManager,
+  sagaEnhancer,
+  devTools,
+} from '../src/store';
 
 describe('store.js', () => {
   beforeEach(() => {
@@ -32,6 +36,14 @@ describe('store.js', () => {
     expect(storeA).not.toBe(storeB);
   });
 
+  it('should have an empty reducers hash table by default', () => {
+    expect(StoreManager.reducers).toEqual({});
+  });
+
+  it('should have default middlewares', () => {
+    expect(StoreManager.middleWares).toMatchObject([sagaEnhancer, devTools]);
+  });
+
   it('should be able to add a reducer', () => {
     const reducer = (state = {}) => state;
     StoreManager.addReducer('test', reducer);
@@ -51,7 +63,7 @@ describe('store.js', () => {
     expect(StoreManager.reducers).toEqual({});
   });
 
-  it('should be return a root reducer function', () => {
+  it('should be able to return a root reducer function', () => {
     const rootReducer = StoreManager.getRootReducer();
     expect(rootReducer).toBeInstanceOf(Function);
   });
@@ -71,7 +83,7 @@ describe('store.js', () => {
   });
 
   it('should be able to run a given saga', () => {
-    const saga = jest.fn(function* testSaga() { });
+    const saga = jest.fn(function* testSaga() { yield null; });
     StoreManager.runSaga(saga);
     StoreManager.getInstance().dispatch({ type: 'FOO' });
     expect(saga).toHaveBeenCalled();
