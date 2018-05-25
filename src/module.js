@@ -202,20 +202,35 @@ export default class Module {
       return this.mergeStates(state, action.payload || {});
     }
 
+    let newState = state;
+
     // if it's a main action, look for a sub reducer that can handle this action
-    if (typeof this.reducers[mainActionType] !== 'undefined') {
-      return this.reducers[mainActionType](state, action);
-    }
+    Module.getActionTypeMatchers(mainActionType).forEach((matcher) => {
+      if (typeof this.reducers[matcher] !== 'undefined') {
+        newState = this.reducers[matcher](newState, action);
+      }
+    });
 
     // if it's an irrelevant action, just return the state
-    return state;
+    return newState;
   }
 
   /**
    * Creates and returns a sub reducer function for a given action type.
+   * @param   {Object}    actionType  Type of the action for which the reducer will be created.
+   * @param   {Function}  callback    The callback function assigned to the action by calling
+   *                                  `createAction` or `handleAction`.
+   * @param   {Array}     argNames    An array of strings that represent the names of arguments
+   *                                  the callback function expects.
+   * @param   {String}    mode        A string that can be one of two values, 'create' if the
+   *                                  callback was assigned using `createAction` or 'handle` if
+   *                                  the callback was assigned using `handleAction`.
+   * @return  {Function}              A reducer function that can handle the given action type.
    */
   createSubReducer = (actionType, callback, argNames, mode) => (state, action) => {
-    if (action.type === actionType) {
+    const matchers = Module.getActionTypeMatchers(action.type);
+
+    if (matchers.includes(actionType)) {
       const result = this.executeCallback(action, callback, argNames, mode);
       const resultType = helpers.getObjectType(result);
       const stateFragment = (resultType === 'object' ? result : {});
@@ -233,6 +248,9 @@ export default class Module {
 
   /**
    * Creates and returns a saga generator function for a given action type.
+   * @param   {String}              actionType    Type of the action for which the saga will
+   *                                              be created.
+   * @return  {GeneratorFunction}                 Saga generator function.
    */
   createSaga = actionType => function* saga() {
     this.workerSagas[actionType] = this.createWorkerSaga(actionType);
@@ -241,6 +259,9 @@ export default class Module {
 
   /**
    * Creates and returns a worker saga generator function for a given action type.
+   * @param   {String}              actionType    Type of the action for which the saga worker will
+   *                                              be created.
+   * @return  {GeneratorFunction}                 Worker saga generator function.
    */
   createWorkerSaga = actionType => function* workerSaga(action) {
     const result = this.$cachedCallbackResult[actionType];
@@ -305,9 +326,10 @@ export default class Module {
    * value of the given key. If the query is an object, it will return an object that
    * has the same structure but contains the resolved values. If the query parameter
    * is not provided, the complete state object will be returned.
-   * @param {String|Object}   query   A query string or a query object that represents
-   *                                  part of the state object that needs to be fetched.
-   *                                  This parameter is not required.
+   * @param   {String|Object}   query   A query string or a query object that represents
+   *                                    part of the state object that needs to be fetched.
+   *                                    This parameter is not required.
+   * @return  {Object}                  The state object, part of it or a value in the state object.
    */
   getState = (query) => {
     const state = this.store.getState()[this.name];
@@ -330,6 +352,17 @@ export default class Module {
 
   /**
    * Executes a given callback function and passes it getState in the context.
+   * @param   {Object}    action      The action object that was dispatched and caused the
+   *                                  execution of the callback.
+   * @param   {Function}  callback    The callback function assigned to the action by calling
+   *                                  `createAction` or `handleAction`.
+   * @param   {Array}     argNames    An array of strings that represent the names of arguments
+   *                                  the callback function expects.
+   * @param   {String}    mode        A string that can be one of two values, 'create' if the
+   *                                  callback was assigned using `createAction` or 'handle` if
+   *                                  the callback was assigned using `handleAction`.
+   * @return  {Object}                Either an object which will be used to update the state
+   *                                  or a generator object.
    */
   executeCallback = (action, callback, argNames, mode = 'create') => {
     const callbackArgs = mode === 'create' ? argNames.map(arg => action.payload[arg]) : [action];
@@ -339,6 +372,9 @@ export default class Module {
 
   /**
    * Merges two state objects and returns the merged object as a new copy.
+   * @param   {Object}  stateA    First state object.
+   * @param   {Object}  stateB    Second state object.
+   * @return  {Object}            The merged state object.
    */
   mergeStates = (stateA, stateB) => Object.keys(stateB).reduce(
     (prev, next) => helpers.findPropInObject(prev, next, false, stateB[next]),
@@ -347,14 +383,45 @@ export default class Module {
 
   /**
    * Checks whether the module owns (has created) the provided action type.
+   * @param   {String}    actionType    Action type in question.
+   * @return  {Boolean}                 A boolean that represents whether the action type
+   *                                    is owned (was created) by the module or not.
    */
   ownsAction = actionType => Object.values(this.types).includes(actionType)
 
   /**
    * Returns the context used for a callback (action or handler)
+   * @return  {Object}   An object that is provided as a context to `createAction` and
+   *                     `handleAction` callback functions.
    */
   getCallbackContext = () => ({
     getState: this.getState,
     get state() { return this.getState(); },
   })
+
+  /**
+   * Creates an array of matchers for a given action type.
+   * @param   {String} actionType   Action type to build the array of matchers against.
+   * @return  {Array}               An array that represents the possible matchers for a
+   *                                given action type.
+   */
+  static getActionTypeMatchers(actionType) {
+    const regex = /@@(.+?)\/(.+)/;
+    let moduleName = '';
+    let actionName = actionType;
+
+    if (regex.test(actionType)) {
+      [, moduleName, actionName] = actionType.match(regex);
+    }
+
+    return [
+      actionType, // exact action
+      `@@${moduleName}`, // any action by the module
+      `@@${moduleName}/`, // any action by the module (alias)
+      `@@${moduleName}/*`, // any action by the module (alias)
+      `@@*/${actionName}`, // same action dispatched by any module
+      `*/${actionName}`, // same action dispatched by any module (alias)
+      '*', // any action
+    ];
+  }
 }
