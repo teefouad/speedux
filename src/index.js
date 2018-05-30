@@ -35,22 +35,29 @@ export const store = StoreManager.getInstance();
 export const { addReducer, useMiddleware } = StoreManager;
 
 /**
- * Export a proxy function to Connector.connect method.
  * Connects a component to the Redux store and injects its state and actions via the props.
+ * If the module name is not provided, the name of the component or function will be used instead.
+ * If the initial state is not provided, an empty object will be assumed to be the initial state.
+ * @param {Object}    config          An object that represents the module configuration.
  */
-export function connect(component, module) {
-  module.setName(helpers.getComponentName(component));
-  return Connector.connect(component, module);
+export function connect(component, config = {}) {
+  if (helpers.getObjectType(config) !== 'object') {
+    throw new Error('Module configuration must be an object');
+  }
+
+  const targetComponent = component;
+
+  targetComponent.module = createModule({
+    ...config,
+    name: config.name || helpers.getComponentName(component),
+  });
+
+  return Connector.connect(targetComponent, targetComponent.module);
 }
 
 /**
  * Export a createModule function that creates a module object internally. The exported module
  * will contain the initial state, action creators object, sagas object and the reducer function.
- * The returned module can be used with the `connect` function to connect a component to the
- * redux store.
- *
- * If the module name is not provided, the name of the component or function will be used instead.
- * If the initial state is not provided, an empty object will be assumed to be the initial state.
  *
  * @param {Object}    config          An object that represents the module configuration.
  * @return  {Object}                  The module object.
@@ -66,4 +73,4 @@ export function createModule(config = {}) {
   });
 }
 
-export default createModule;
+export default connect;

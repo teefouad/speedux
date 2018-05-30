@@ -139,8 +139,9 @@ describe('index.js', () => {
 
   it('should set the name of the module to the component name in camelcase, if the name is not provided', () => {
     const module = createModule();
-    connect(getMockComponent(), module);
-    expect(module.name).toBe('fakeComponent');
+    const component = getMockComponent();
+    connect(component, module);
+    expect(component.module.name).toBe('fakeComponent');
   });
 
   it('should be able to dispatch an action from the component props', () => {

@@ -128,6 +128,10 @@ export default class Module {
     const actionType = `${this.getPrefix()}${actionName}`;
     const argNames = helpers.getArgNames(callback);
 
+    // useful for using the defined action to reference the prefixed action type
+    this.actions[name] = callback.bind(this.getCallbackContext());
+    this.actions[name].toString = () => actionType;
+
     // register type
     this.types[actionName] = actionType;
 
@@ -165,6 +169,8 @@ export default class Module {
    */
   handleAction = (actionType, callback = () => null) => {
     const argNames = helpers.getArgNames(callback);
+
+    this.handlers[actionType] = callback.bind(this.getCallbackContext());
 
     // build the reducer function
     this.reducers[actionType] = this.createSubReducer(actionType, callback, argNames, 'handle');
