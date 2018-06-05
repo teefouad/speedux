@@ -17,6 +17,12 @@ import * as helpers from './helpers';
 export { Provider } from 'react-redux';
 
 /**
+ * A hash map of all created modules with the module identifier as the key and the module
+ * reference as the value.
+ */
+const modulesMap = {};
+
+/**
  * A valid StoreManager must be used with the Connector before calling Connector.connect()
  * with any component
  */
@@ -38,21 +44,27 @@ export const { addReducer, useMiddleware } = StoreManager;
  * Connects a component to the Redux store and injects its state and actions via the props.
  * If the module name is not provided, the name of the component or function will be used instead.
  * If the initial state is not provided, an empty object will be assumed to be the initial state.
- * @param {Object}    config          An object that represents the module configuration.
+ * @param {Class|Function}    component     The component to be connected.
+ * @param {Object}            config        An object that represents the module configuration.
+ * @param {String}            identifier    A unique string that identifies this connected
+ *                                          component. This identifier may be used later to
+ *                                          retrieve a reference to the created module object.
  */
-export function connect(component, config = {}) {
+export function connect(component, config = {}, identifier = null) {
   if (helpers.getObjectType(config) !== 'object') {
     throw new Error('Module configuration must be an object');
   }
 
-  const targetComponent = component;
+  const name = config.name || helpers.getComponentName(component);
 
-  targetComponent.module = createModule({
+  const module = createModule({
     ...config,
-    name: config.name || helpers.getComponentName(component),
+    name,
   });
 
-  return Connector.connect(targetComponent, targetComponent.module);
+  modulesMap[identifier || name] = module;
+
+  return Connector.connect(component, module);
 }
 
 /**
@@ -71,6 +83,15 @@ export function createModule(config = {}) {
     ...config,
     store,
   });
+}
+
+/**
+ * Returns a reference to a module that was created after calling `connect` on a component.
+ * @param {String} identifier Module identifier. This is the identifier string that was used
+ *                            when `connect` was called.
+ */
+export function getModule(identifier) {
+  return modulesMap[identifier];
 }
 
 export default connect;
