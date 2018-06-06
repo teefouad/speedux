@@ -17,12 +17,6 @@ import * as helpers from './helpers';
 export { Provider } from 'react-redux';
 
 /**
- * A hash map of all created modules with the module identifier as the key and the module
- * reference as the value.
- */
-const modulesMap = {};
-
-/**
  * A valid StoreManager must be used with the Connector before calling Connector.connect()
  * with any component
  */
@@ -46,26 +40,20 @@ export const { addReducer, useMiddleware } = StoreManager;
  * If the initial state is not provided, an empty object will be assumed to be the initial state.
  * @param {Class|Function}    component     The component to be connected.
  * @param {Object}            config        An object that represents the module configuration.
- * @param {String}            identifier    A unique string that identifies this connected
- *                                          component. This identifier may be used later to
- *                                          retrieve a reference to the created module object.
  */
-export function connect(component, config = {}, identifier = null) {
-  if (helpers.getObjectType(config) !== 'object') {
-    throw new Error('Module configuration must be an object');
+export function connect(component, module = {}) {
+  if (helpers.getObjectType(module) !== 'object') {
+    throw new Error('Module must be an object');
   }
 
-  const name = config.name || helpers.getComponentName(component);
-
-  const module = createModule({
-    ...config,
-    name,
-  });
-
-  modulesMap[identifier || name] = module;
+  if (!module.name) {
+    module.setName(helpers.getComponentName(component));
+  }
 
   return Connector.connect(component, module);
 }
+
+const moduleNames = [];
 
 /**
  * Export a createModule function that creates a module object internally. The exported module
@@ -74,24 +62,26 @@ export function connect(component, config = {}, identifier = null) {
  * @param {Object}    config          An object that represents the module configuration.
  * @return  {Object}                  The module object.
  */
-export function createModule(config = {}) {
+export function createModule(name, config = {}) {
+  if (!name) {
+    throw new Error('Module name cannot be empty');
+  }
+
+  if (moduleNames.includes(name)) {
+    throw new Error(`Name '${name}' is already used by another module`);
+  } else {
+    moduleNames.push(name);
+  }
+
   if (helpers.getObjectType(config) !== 'object') {
     throw new Error('Module configuration must be an object');
   }
 
   return new Module({
-    ...config,
     store,
+    name,
+    ...config,
   });
-}
-
-/**
- * Returns a reference to a module that was created after calling `connect` on a component.
- * @param {String} identifier Module identifier. This is the identifier string that was used
- *                            when `connect` was called.
- */
-export function getModule(identifier) {
-  return modulesMap[identifier];
 }
 
 export default connect;
