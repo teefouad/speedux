@@ -27,8 +27,6 @@ export default class Module {
     stateKey: 'state',
     // namespace to use when passing action creators as props
     actionsKey: 'actions',
-    // reference to the store object, mainly used to retrieve the state
-    store: null,
     // hashmap of the module actions (each action is a normal or a generator function)
     actions: {},
     // hashmap of handler functions, use the action type as the key or the function name
@@ -68,11 +66,12 @@ export default class Module {
     this.name = config.name;
     this.stateKey = config.stateKey;
     this.actionsKey = config.actionsKey;
-    this.store = config.store;
     this.initialState = helpers.deepCopy(config.state || config.initialState);
     this.actions = {};
     this.handlers = {};
     this.currentConfig = helpers.deepCopy(config);
+
+    this.$state = helpers.deepCopy(this.initialState);
 
     Object.keys(config.actions).forEach((action) => {
       this.actions[action] = config.actions[action].bind(this.getCallbackContext());
@@ -203,12 +202,14 @@ export default class Module {
     const subActionType = actionType.replace(mainActionType, '').slice(1);
     const actionName = this.ownsAction(mainActionType) ? mainActionType.replace(/^@@(.*?)\//, '') : 'HANDLE_ACTION';
 
+    let newState = state;
+
     // if the sub action is 'update', just update the state with the payload object
     if (mainActionType === `${this.getPrefix()}${actionName}` && subActionType === 'UPDATE') {
-      return this.mergeStates(state, action.payload || {});
+      newState = this.mergeStates(state, action.payload || {});
+      this.$state = newState;
+      return newState;
     }
-
-    let newState = state;
 
     // if it's a main action, look for a sub reducer that can handle this action
     Module.getActionTypeMatchers(mainActionType).forEach((matcher) => {
@@ -218,6 +219,7 @@ export default class Module {
     });
 
     // if it's an irrelevant action, just return the state
+    this.$state = newState;
     return newState;
   }
 
@@ -338,7 +340,7 @@ export default class Module {
    * @return  {Object}                  The state object, part of it or a value in the state object.
    */
   getState = (query) => {
-    const state = this.store.getState()[this.name];
+    const state = this.$state;
 
     // handle query strings
     if (helpers.getObjectType(query) === 'string') {

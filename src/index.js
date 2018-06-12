@@ -78,7 +78,6 @@ export function createModule(name, config = {}) {
   }
 
   return new Module({
-    store,
     name,
     ...config,
   });
