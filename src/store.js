@@ -11,10 +11,23 @@ import {
 import createSagaMiddleware from 'redux-saga';
 
 /**
+ * Local imports.
+ */
+import * as helpers from './helpers';
+
+/**
  * Reference to hold the Redux store instance.
  * @type {Object}
  */
 let storeInstance;
+
+/**
+ * An array of getState calls that were executed during a state update.
+ * Each callback function in this array will be invoked with the new
+ * state once the state is updated and then the array will be emptied.
+ * @type {Array}
+ */
+let getStateCallbacks = [];
 
 /**
  * Creates the saga middleware function.
@@ -36,7 +49,7 @@ export const sagaEnhancer = applyMiddleware(sagaMiddleware);
 export const devTools = compose(window.devToolsExtension ? window.devToolsExtension() : foo => foo);
 
 /**
- * This is not the actual store. This is a wrapper object that manages
+ * This is not the actual store object. This is a wrapper object that manages
  * the Redux store instance. Use `StoreManager.getInstance()` to get a reference
  * to the Redux store.
  */
@@ -69,7 +82,7 @@ export const StoreManager = {
   /**
    * Unregisters a reducer function. If you remove a reducer, you have to explicitly
    * call StoreManager.update() afterwards.
-   * @param  {String}   key   Reducer unique identifier key.
+   * @param  {String}   key       Reducer unique identifier key.
    */
   removeReducer(name) {
     delete StoreManager.reducers[name];
@@ -94,7 +107,71 @@ export const StoreManager = {
       reducers.$_foo = (state = {}) => state; // default reducer
     }
 
-    return combineReducers(reducers);
+    const rootReducer = combineReducers(reducers);
+
+    return (state, action) => {
+      // start updating the state
+      StoreManager.$updatingState = true;
+      // clear getState calls queue
+      getStateCallbacks = [];
+
+      // get the new state object
+      const newState = rootReducer(state, action);
+
+      // invoke each getState call in the queue with the new state
+      StoreManager.$updatingState = false;
+      while (getStateCallbacks.length) getStateCallbacks.shift()(newState);
+
+      // return the new state
+      return newState;
+    };
+  },
+
+  /**
+   * Returns the complete state object or part of it based on a given query. If the
+   * query parameter is a string that uses dot notation, it will return the resolved
+   * value of the given key. If the query is an object, it will return an object that
+   * has the same structure but contains the resolved values. If the query parameter
+   * is not provided, the complete state object will be returned.
+   * @param   {String|Object}   query   A query string or a query object that represents
+   *                                    part of the state object that needs to be fetched.
+   *                                    This parameter is not required.
+   * @return  {Promise}                 A promise that eventually resolves with the state
+   *                                    object, part of it or a value in the state object.
+   */
+  getState(query) {
+    if (StoreManager.$updatingState === false) {
+      return Promise.resolve(StoreManager.queryState(query, storeInstance.getState()));
+    }
+
+    return new Promise((resolve) => {
+      getStateCallbacks.push((state) => {
+        resolve(StoreManager.queryState(query, state));
+      });
+    });
+  },
+
+  /**
+   * Queries a state object for a specific value.
+   * @param   {String}    query   Query string.
+   * @param   {Object}    state   State object to query.
+   * @return  {Object}            The state object, part of it or a value in the state object.
+   */
+  queryState(query, state) {
+    // handle query strings
+    if (helpers.getObjectType(query) === 'string') {
+      return helpers.findPropInObject(state, query);
+    }
+
+    // handle query objects
+    if (helpers.getObjectType(query) === 'object') {
+      return Object.keys(query).reduce((prev, next) => ({
+        ...prev,
+        [next]: helpers.findPropInObject(state, query[next]),
+      }), {});
+    }
+
+    return state;
   },
 
   /**
@@ -137,7 +214,7 @@ export const StoreManager = {
 
   /**
    * Runs a saga generator function.
-   * @param {Generator} saga Saga to run.
+   * @param {Generator} saga      Saga to run.
    */
   runSaga(saga) {
     sagaMiddleware.run(saga);

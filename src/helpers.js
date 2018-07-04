@@ -1,7 +1,7 @@
 /**
  * Extracts parameters of a function as an array.
- * @param   {Function}  func  Reference to the function.
- * @return  {Array}           An array of argument names the function expects to receive.
+ * @param   {Function}  func          Reference to the function.
+ * @return  {Array}                   An array of argument names the function expects to receive.
  */
 export const getArgNames = (func) => {
   // convert the function to a string and remove spaces
@@ -56,8 +56,8 @@ export const getArgNames = (func) => {
 
 /**
  * Returns type of a given object.
- * @param   {Any}     obj   Object to inspect for type.
- * @return  {String}        Type of the given object.
+ * @param   {Any}       obj           Object to inspect for type.
+ * @return  {String}                  Type of the given object.
  */
 export const getObjectType = (obj) => {
   const typeString = Object.prototype.toString.call(obj);
@@ -67,12 +67,13 @@ export const getObjectType = (obj) => {
 /**
  * Uses a string path to search for a direct property in an object and return its value or
  * replace it if a new value is provided.
- * @param {Object}  obj           Object to search.
- * @param {String}  prop          String that represents the property name.
- * @param {Any}     value         New value to replace the property with. Omit this
- *                                parameter if you just want to read the property.
- * @return {Object}               Value of the property or a copy of the same object updated
- *                                with the provided value.
+ * @param   {Object}    obj           Object to search.
+ * @param   {String}    prop          String that represents the property name.
+ * @param   {Any}       value         New value to replace the property with. Omit this
+ *                                    parameter if you just want to read the property. If the
+ *                                    provided value is `undefined`, the property will be deleted.
+ * @return  {Object}                  Value of the property or a copy of the same object updated
+ *                                    with the provided value.
  */
 export const findDirectPropInObject = (obj, prop, copyByRef = false, ...args) => {
   const type = getObjectType(obj);
@@ -187,13 +188,13 @@ export const findDirectPropInObject = (obj, prop, copyByRef = false, ...args) =>
 /**
  * Uses a string path to search for a property in an object and return its value or
  * replace it if a new value is provided.
- * @param {Object}  obj           Object to search.
- * @param {String}  pathStr       String that represents the property path.
- *                                For example: data.entries[0][3].title
- * @param {Any}     value         New value to replace the property with. Omit this
- *                                parameter if you just want to read the property.
- * @return {Object}               Value of the property or a copy of the same object updated
- *                                with the provided value.
+ * @param   {Object}    obj           Object to search.
+ * @param   {String}    pathStr       String that represents the property path.
+ *                                    For example: data.entries[0][3].title
+ * @param   {Any}       value         New value to replace the property with. Omit this
+ *                                    parameter if you just want to read the property.
+ * @return  {Object}                  Value of the property or a copy of the same object updated
+ *                                    with the provided value.
  */
 export const findPropInObject = (obj, pathStr, copyByRef = false, ...args) => {
   const type = getObjectType(obj);
@@ -278,8 +279,8 @@ export const findPropInObject = (obj, pathStr, copyByRef = false, ...args) => {
 
 /**
  * Converts any string to camel-case format.
- * @param {String}  str String to convert.
- * @return {String}     The formatted string.
+ * @param   {String}    str           String to convert.
+ * @return  {String}                  The formatted string.
  */
 export const toCamelCase = (str) => {
   // remove spaces, dashes and underscores from the begining of the string
@@ -302,8 +303,8 @@ export const toCamelCase = (str) => {
 
 /**
  * Converts any string to snake-case format.
- * @param {String}  str String to convert.
- * @return {String}     The formatted string.
+ * @param   {String}    str           String to convert.
+ * @return  {String}                  The formatted string.
  */
 export const toSnakeCase = (str) => {
   const camelCase = toCamelCase(str);
@@ -312,7 +313,8 @@ export const toSnakeCase = (str) => {
 
 /**
  * Deep-copies an object or an array.
- * @param {Object | Array} obj Object or Array to copy.
+ * @param   {Object|Array}  obj       Object or Array to copy.
+ * @return  {Object|Array}            Copied Object or Array.
  */
 export const deepCopy = (obj) => {
   const type = getObjectType(obj);
@@ -337,8 +339,8 @@ export const deepCopy = (obj) => {
 /**
  * Generates a component name based on the display name of the component or the function
  * name if it's a functional component.
- * @param   {Object}  component Target component.
- * @return  {String}            Component name as a string or null.
+ * @param   {Object}    component     Target component.
+ * @return  {String}                  Component name as a string or null.
  */
 export const getComponentName = (component) => {
   const displayName = component.displayName && `${component.displayName[0].toLowerCase()}${component.displayName.slice(1)}`;

@@ -55,14 +55,32 @@ export default class Module {
 
   /**
    * Configures the module with a configuration object
+   * @param {Object}    options     Configuration object which may hold one or more of
+   *                                the following keys:
+   *                                - name (String)
+   *                                Unique identifier key for the module
+   *                                - stateKey (String)
+   *                                Namespace to use when passing state keys as props
+   *                                - actionsKey (String)
+   *                                Namespace to use when passing action creators as props
+   *                                - actions (String)
+   *                                Hashmap of the module actions (each action is a normal
+   *                                or a generator function)
+   *                                - handlers (String)
+   *                                Hashmap of handler functions, use the action type as
+   *                                the key or the function name
+   *                                - initialState (String)
+   *                                Initial state object of the module
    */
   config = (options) => {
+    // append to the current module configuration
     const config = {
       ...Module.defaults,
       ...this.currentConfig,
       ...options,
     };
 
+    // setup the properties
     this.name = config.name;
     this.stateKey = config.stateKey;
     this.actionsKey = config.actionsKey;
@@ -71,16 +89,10 @@ export default class Module {
     this.handlers = {};
     this.currentConfig = helpers.deepCopy(config);
 
-    this.$state = helpers.deepCopy(this.initialState);
+    // initialize the state
+    this.state = helpers.deepCopy(this.initialState);
 
-    Object.keys(config.actions).forEach((action) => {
-      this.actions[action] = config.actions[action].bind(this.getCallbackContext());
-    });
-
-    Object.keys(config.handlers).forEach((handler) => {
-      this.handlers[handler] = config.handlers[handler].bind(this.getCallbackContext());
-    });
-
+    // create all sub-reducers
     this.createSubReducers();
   }
 
@@ -97,10 +109,11 @@ export default class Module {
   }
 
   /**
-   * Sets the module name.
+   * Sets the module name. This will reset all action types, action creators and sub-reducers.
+   * @param {String}     name       New name for the module.
    */
-  setName = (newName) => {
-    this.name = newName;
+  setName = (name) => {
+    this.name = name;
     this.types = {};
     this.actionCreators = {};
     this.reducers = {};
@@ -119,7 +132,7 @@ export default class Module {
    * @param {Function}  callback    A function that returns an object. The returned object
    *                                represents a state fragment which is used to update the
    *                                state object. For asyncronous actions, use a generator
-   *                                function to yield multiple times.
+   *                                function instead.
    */
   createAction = (name, callback = () => null) => {
     const camelCaseName = helpers.toCamelCase(name);
@@ -127,7 +140,7 @@ export default class Module {
     const actionType = `${this.getPrefix()}${actionName}`;
     const argNames = helpers.getArgNames(callback);
 
-    // useful for using the defined action to reference the prefixed action type
+    // allows using the defined action as a reference to the prefixed action type
     this.actions[name] = callback.bind(this.getCallbackContext());
     this.actions[name].toString = () => actionType;
 
@@ -164,7 +177,7 @@ export default class Module {
    * @param {Function}  callback    A function that returns an object. The returned object
    *                                represents a state fragment which is used to update the
    *                                state object. For asyncronous actions, use a generator
-   *                                function to yield multiple times.
+   *                                function instead.
    */
   handleAction = (actionType, callback = () => null) => {
     const argNames = helpers.getArgNames(callback);
@@ -179,7 +192,7 @@ export default class Module {
   }
 
   /**
-   * Create all sub reducers for the module.
+   * Creates all sub reducers for the module.
    */
   createSubReducers = () => {
     Object.entries(this.currentConfig.actions).forEach(([actionName, actionCallback]) => {
@@ -207,7 +220,7 @@ export default class Module {
     // if the sub action is 'update', just update the state with the payload object
     if (mainActionType === `${this.getPrefix()}${actionName}` && subActionType === 'UPDATE') {
       newState = this.mergeStates(state, action.payload || {});
-      this.$state = newState;
+      this.state = newState;
       return newState;
     }
 
@@ -219,21 +232,22 @@ export default class Module {
     });
 
     // if it's an irrelevant action, just return the state
-    this.$state = newState;
+    this.state = newState;
+
     return newState;
   }
 
   /**
    * Creates and returns a sub reducer function for a given action type.
-   * @param   {Object}    actionType  Type of the action for which the reducer will be created.
-   * @param   {Function}  callback    The callback function assigned to the action by calling
-   *                                  `createAction` or `handleAction`.
-   * @param   {Array}     argNames    An array of strings that represent the names of arguments
-   *                                  the callback function expects.
-   * @param   {String}    mode        A string that can be one of two values, 'create' if the
-   *                                  callback was assigned using `createAction` or 'handle` if
-   *                                  the callback was assigned using `handleAction`.
-   * @return  {Function}              A reducer function that can handle the given action type.
+   * @param   {Object}      actionType    Type of the action for which the reducer will be created.
+   * @param   {Function}    callback      The callback function assigned to the action by calling
+   *                                      `createAction` or `handleAction`.
+   * @param   {Array}       argNames      An array of strings that represent the names of arguments
+   *                                      the callback function expects.
+   * @param   {String}      mode          A string that can be one of two values, 'create' if the
+   *                                      callback was assigned using `createAction` or 'handle` if
+   *                                      the callback was assigned using `handleAction`.
+   * @return  {Function}                  A reducer function that can handle the given action type.
    */
   createSubReducer = (actionType, callback, argNames, mode) => (state, action) => {
     const matchers = Module.getActionTypeMatchers(action.type);
@@ -245,8 +259,8 @@ export default class Module {
 
       // the saga handler will be called right after the reducer so instead of the saga
       // handler executing the callback again, pass it the cached result
-      this.$cachedCallbackResult = this.$cachedCallbackResult || {};
-      this.$cachedCallbackResult[actionType] = result;
+      this.cachedCallbackResult = this.cachedCallbackResult || {};
+      this.cachedCallbackResult[actionType] = result;
 
       return this.mergeStates(state, stateFragment);
     }
@@ -272,7 +286,7 @@ export default class Module {
    * @return  {GeneratorFunction}                 Worker saga generator function.
    */
   createWorkerSaga = actionType => function* workerSaga(action) {
-    const result = this.$cachedCallbackResult[actionType];
+    const result = this.cachedCallbackResult[actionType];
     const actionName = this.ownsAction(action.type) ? action.type.replace(/^@@(.*?)\//, '') : 'HANDLE_ACTION';
 
     // check if the callback return value is an iterable (usually a generator function)
@@ -340,22 +354,20 @@ export default class Module {
    * @return  {Object}                  The state object, part of it or a value in the state object.
    */
   getState = (query) => {
-    const state = this.$state;
-
     // handle query strings
     if (helpers.getObjectType(query) === 'string') {
-      return helpers.findPropInObject(state, query);
+      return helpers.findPropInObject(this.state, query);
     }
 
     // handle query objects
     if (helpers.getObjectType(query) === 'object') {
       return Object.keys(query).reduce((prev, next) => ({
         ...prev,
-        [next]: helpers.findPropInObject(state, query[next]),
+        [next]: helpers.findPropInObject(this.state, query[next]),
       }), {});
     }
 
-    return state;
+    return this.state;
   }
 
   /**
@@ -374,7 +386,6 @@ export default class Module {
    */
   executeCallback = (action, callback, argNames, mode = 'create') => {
     const callbackArgs = mode === 'create' ? argNames.map(arg => action.payload[arg]) : [action];
-
     return callback.apply(this.getCallbackContext(), callbackArgs);
   }
 
@@ -402,10 +413,17 @@ export default class Module {
    * @return  {Object}   An object that is provided as a context to `createAction` and
    *                     `handleAction` callback functions.
    */
-  getCallbackContext = () => ({
-    getState: this.getState,
-    get state() { return this.getState(); },
-  })
+  getCallbackContext = () => {
+    const self = this;
+
+    return {
+      name: self.name,
+      actions: self.actions,
+      handlers: self.handlers,
+      initialState: self.initialState,
+      get state() { return self.getState(); },
+    };
+  }
 
   /**
    * Creates an array of matchers for a given action type.

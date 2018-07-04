@@ -30,23 +30,28 @@ const Connector = {
   },
 
   /**
-   * Connects a component to the Redux store and injects its state and actions via the props.
-   * It takes two arguments, the component to be connected and a configuration object then
-   * returns the connected component.
-   * @param   {Class}   component Reference to the class of the component to be connected
-   *                              to the store.
-   * @param   {Object}  config    Configuration object that contains the following keys:
-   *                                - reducer         Reference to the component reducer function.
-   *                                - actions         Reference to the actions object. This is a
-   *                                                  hash table of action creator functions.
-   *                                - sagas           Reference to the sagas object. This is a
-   *                                                  hash table of generator functions, each
-   *                                                  represents a saga.
-   *                                - name            Key to be used to extract the state object.
-   *                                - stateKey        Namespace that will be used to pass component
-   *                                                  state via props.
-   *                                - actionsKey      Namespace that will be used to pass component
-   *                                                  actions via props.
+   * Connects a component to the Redux store and injects its module state and actions into the
+   * component props. It takes two arguments, the component to be connected and a configuration
+   * object then returns the connected component.
+   * @param   {Class|Function}   component   Reference to the class or function of the component
+   *                                         to be connected to the store.
+   * @param   {Object}            config     Configuration object that contains the following keys:
+   *                                         - reducer
+   *                                            Reference to the component reducer function.
+   *                                         - actionCreators
+   *                                            Reference to the actions object. This is a hash
+   *                                            table of action creator functions.
+   *                                         - sagas
+   *                                            Reference to the sagas object. This is a hash table
+   *                                            of generator functions, each represents a saga.
+   *                                         - name
+   *                                            Key to be used to save and extract the state object.
+   *                                         - stateKey
+   *                                            Namespace that will be used to pass component
+   *                                            state via props.
+   *                                         - actionsKey
+   *                                            Namespace that will be used to pass component
+   *                                            actions via props.
    * @return  {Object}            The connected component.
    */
   connect: (component, config = {}) => {
@@ -77,14 +82,13 @@ const Connector = {
     // get the component name
     const componentName = getComponentName(component);
 
-    // default value for the stateKey is the component display name or function name
-    // (component is stateless)
+    // if 'auto' is used as a stateKey, the component display name or function name will be used
     const stateKey = (config.stateKey === 'auto' ? componentName : config.stateKey);
 
-    // default value for the actionsKey is the same as stateKey
+    // if 'auto' is used as a actionsKey, the component display name or function name will be used
     const actionsKey = (config.actionsKey === 'auto' ? componentName : config.actionsKey);
 
-    // default value for the name is the same as stateKey
+    // if no name is provided, the component display name or function name will be used
     const name = (config.name === '' ? componentName : config.name);
 
     // register reducer
@@ -92,12 +96,12 @@ const Connector = {
       Connector.storeManager.addReducer(name, reducer);
     }
 
-    // maps component state to component props
+    // maps state to component props
     const mapStateToProps = (stateKey ? state => ({
       [stateKey]: state[name],
     }) : null);
 
-    // maps component actions to dispatchProps
+    // maps actions to dispatchProps
     const mapDispatchToProps = dispatch => bindActionCreators(actions, dispatch);
 
     // combines component props, mapped props from state and mapped props from dispatchProps

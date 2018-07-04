@@ -18,32 +18,38 @@ export { Provider } from 'react-redux';
 
 /**
  * A valid StoreManager must be used with the Connector before calling Connector.connect()
- * with any component
+ * with any component.
  */
 Connector.use(StoreManager);
 
 /**
- * Export a store instance
+ * Export a store instance.
  */
 export const store = StoreManager.getInstance();
 
 /**
- * Export addReducer and useMiddleware from the store manager
+ * Export addReducer and useMiddleware from the store manager.
  * addReducer(key, reducerFunction)     Allows using middlewares with the store
  * useMiddleware(middlewareFunction)    Adds a reducer function to be used by the root reducer
  */
 export const { addReducer, useMiddleware } = StoreManager;
 
 /**
- * Connects a component to the Redux store and injects its state and actions via the props.
- * If the module name is not provided, the name of the component or function will be used instead.
- * If the initial state is not provided, an empty object will be assumed to be the initial state.
- * @param {Class|Function}    component     The component to be connected.
- * @param {Object}            config        An object that represents the module configuration.
+ * Export a getState method to help retrieve the state of any module.
+ */
+export const { getState } = StoreManager;
+
+/**
+ * Connects a component to the Redux store and injects its module state and actions into the
+ * component props. If the module name is not provided, the name of the component or function
+ * will be used instead. If the initial state is not provided, an empty object will be assumed
+ * to be the initial state.
+ * @param {Class|Function}    component   The component to be connected.
+ * @param {Object}            module      A configuration module object returned from createModule.
  */
 export function connect(component, module = {}) {
   if (helpers.getObjectType(module) !== 'object') {
-    throw new Error('Module must be an object');
+    throw new Error('Provided module must be an object');
   }
 
   if (!module.name) {
@@ -53,24 +59,26 @@ export function connect(component, module = {}) {
   return Connector.connect(component, module);
 }
 
-const moduleNames = [];
-
 /**
- * Export a createModule function that creates a module object internally. The exported module
+ * Export a createModule function that creates and returns a module object. The returned object
  * will contain the initial state, action creators object, sagas object and the reducer function.
- *
- * @param {Object}    config          An object that represents the module configuration.
- * @return  {Object}                  The module object.
+ * @param   {String}    name      A unique identifier string that represents the module name.
+ * @param   {Object}    config    An object that represents the module configuration.
+ * @return  {Object}              The module object.
  */
 export function createModule(name, config = {}) {
   if (!name) {
-    throw new Error('Module name cannot be empty');
+    throw new Error('You must provide a unique name for the module');
   }
 
-  if (moduleNames.includes(name)) {
-    throw new Error(`Name '${name}' is already used by another module`);
+  if (typeof createModule.moduleNames === 'undefined') {
+    createModule.moduleNames = {};
+  }
+
+  if (createModule.moduleNames[name] === true) {
+    throw new Error(`Name '${name}' is already used by another module, please provide a different name`);
   } else {
-    moduleNames.push(name);
+    createModule.moduleNames[name] = true;
   }
 
   if (helpers.getObjectType(config) !== 'object') {
