@@ -33,7 +33,7 @@ describe('index.js', () => {
   });
 
   it('should throw an error if createModule is called with an invalid configuration', () => {
-    const fn = () => createModule('invalid configuration');
+    const fn = () => createModule('foo', 'invalid configuration');
     expect(fn).toThrow();
   });
 
@@ -46,7 +46,7 @@ describe('index.js', () => {
         },
       },
     };
-    const module = createModule(config);
+    const module = createModule('baz', config);
     expect(module.currentConfig.initialState).toEqual(config.initialState);
     expect(module.currentConfig.initialState).not.toBe(config.initialState);
     expect(module.currentConfig.initialState.fiz).toEqual(config.initialState.fiz);
@@ -54,55 +54,55 @@ describe('index.js', () => {
   });
 
   it('should inject an empty object to the state prop if no initial state is provided', () => {
-    const module = createModule({ stateKey: 'testState' });
+    const module = createModule('fa', { stateKey: 'testState' });
     const ConnectedComponent = connect(getMockComponent(), module);
-    const fakeStore = mockStore({ fakeComponent: module.initialState });
+    const fakeStore = mockStore({ fa: module.initialState });
     const instance = renderer.create(<ConnectedComponent store={fakeStore} />);
     expect(instance.root.children[0].props).toHaveProperty('testState', {});
   });
 
   it('should inject an empty object to the actions prop if no actions are provided', () => {
-    const module = createModule({ actionsKey: 'testActions' });
+    const module = createModule('fae', { actionsKey: 'testActions' });
     const ConnectedComponent = connect(getMockComponent(), module);
-    const fakeStore = mockStore({ fakeComponent: module.initialState });
+    const fakeStore = mockStore({ fae: module.initialState });
     const instance = renderer.create(<ConnectedComponent store={fakeStore} />);
     expect(instance.root.children[0].props).toHaveProperty('testActions', {});
   });
 
   it('should be able to set the state prop key', () => {
-    const module = createModule({ stateKey: 'testState' });
+    const module = createModule('fiz', { stateKey: 'testState' });
     const ConnectedComponent = connect(getMockComponent(), module);
-    const fakeStore = mockStore({ fakeComponent: module.initialState });
+    const fakeStore = mockStore({ fiz: module.initialState });
     const instance = renderer.create(<ConnectedComponent store={fakeStore} />);
     expect(instance.root.children[0].props).toHaveProperty('testState', {});
   });
 
   it('should be able to set the actions prop key', () => {
-    const module = createModule({ actionsKey: 'testActions' });
+    const module = createModule('biz', { actionsKey: 'testActions' });
     const ConnectedComponent = connect(getMockComponent(), module);
-    const fakeStore = mockStore({ fakeComponent: module.initialState });
+    const fakeStore = mockStore({ biz: module.initialState });
     const instance = renderer.create(<ConnectedComponent store={fakeStore} />);
     expect(instance.root.children[0].props).toHaveProperty('testActions', {});
   });
 
   it('should set the state key to `state` by default', () => {
-    const module = createModule();
+    const module = createModule('doo');
     const ConnectedComponent = connect(getMockComponent(), module);
-    const fakeStore = mockStore({ fakeComponent: module.initialState });
+    const fakeStore = mockStore({ doo: module.initialState });
     const instance = renderer.create(<ConnectedComponent store={fakeStore} />);
     expect(instance.root.children[0].props).toHaveProperty('state', {});
   });
 
   it('should set the actions key to `actions` by default', () => {
-    const module = createModule();
+    const module = createModule('dee');
     const ConnectedComponent = connect(getMockComponent(), module);
-    const fakeStore = mockStore({ fakeComponent: module.initialState });
+    const fakeStore = mockStore({ dee: module.initialState });
     const instance = renderer.create(<ConnectedComponent store={fakeStore} />);
     expect(instance.root.children[0].props).toHaveProperty('actions', {});
   });
 
   it('should inject the initial state into the component props', () => {
-    const module = createModule({
+    const module = createModule('boo', {
       initialState: {
         foo: 'baz',
         fiz: 'biz',
@@ -110,7 +110,7 @@ describe('index.js', () => {
       },
     });
     const ConnectedComponent = connect(getMockComponent(), module);
-    const fakeStore = mockStore({ fakeComponent: module.initialState });
+    const fakeStore = mockStore({ boo: module.initialState });
     const instance = renderer.create(<ConnectedComponent store={fakeStore} />);
     expect(instance.root.children[0].props).toHaveProperty('state', {
       foo: 'baz',
@@ -120,7 +120,7 @@ describe('index.js', () => {
   });
 
   it('should inject the action creators into the component props', () => {
-    const module = createModule({
+    const module = createModule('bay', {
       actions: {
         foo() {},
         fiz() {},
@@ -128,7 +128,7 @@ describe('index.js', () => {
       },
     });
     const ConnectedComponent = connect(getMockComponent(), module);
-    const fakeStore = mockStore({ fakeComponent: module.initialState });
+    const fakeStore = mockStore({ bay: module.initialState });
     const instance = renderer.create(<ConnectedComponent store={fakeStore} />);
     expect(instance.root.children[0].props).toHaveProperty('actions', {
       foo: expect.any(Function),
@@ -138,23 +138,24 @@ describe('index.js', () => {
   });
 
   it('should set the name of the module to the component name in camelcase, if the name is not provided', () => {
-    const module = createModule();
+    const module = createModule('bez');
     const component = getMockComponent();
+    delete module.name;
     connect(component, module);
-    expect(component.module.name).toBe('fakeComponent');
+    expect(module.name).toBe('fakeComponent');
   });
 
   it('should be able to dispatch an action from the component props', () => {
-    const module = createModule({
+    const module = createModule('faz', {
       actions: {
         foo() { },
       },
     });
     const ConnectedComponent = connect(getMockComponent(), module);
-    const fakeStore = mockStore({ fakeComponent: module.initialState });
+    const fakeStore = mockStore({ faz: module.initialState });
     const instance = renderer.create(<ConnectedComponent store={fakeStore} />);
     expect(instance.root.children[0].props.actions.foo()).toMatchObject({
-      type: '@@fakeComponent/FOO',
+      type: '@@faz/FOO',
       payload: {},
     });
   });

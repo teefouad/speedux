@@ -27,6 +27,8 @@ export default class Module {
     stateKey: 'state',
     // namespace to use when passing action creators as props
     actionsKey: 'actions',
+    // reference to the store object, mainly used to retrieve the state
+    store: null,
     // hashmap of the module actions (each action is a normal or a generator function)
     actions: {},
     // hashmap of handler functions, use the action type as the key or the function name
@@ -84,6 +86,7 @@ export default class Module {
     this.name = config.name;
     this.stateKey = config.stateKey;
     this.actionsKey = config.actionsKey;
+    this.store = config.store;
     this.initialState = helpers.deepCopy(config.state || config.initialState);
     this.actions = {};
     this.handlers = {};
@@ -354,20 +357,22 @@ export default class Module {
    * @return  {Object}                  The state object, part of it or a value in the state object.
    */
   getState = (query) => {
+    const state = this.store.getState()[this.name];
+
     // handle query strings
     if (helpers.getObjectType(query) === 'string') {
-      return helpers.findPropInObject(this.state, query);
+      return helpers.findPropInObject(state, query);
     }
 
     // handle query objects
     if (helpers.getObjectType(query) === 'object') {
       return Object.keys(query).reduce((prev, next) => ({
         ...prev,
-        [next]: helpers.findPropInObject(this.state, query[next]),
+        [next]: helpers.findPropInObject(state, query[next]),
       }), {});
     }
 
-    return this.state;
+    return state;
   }
 
   /**
