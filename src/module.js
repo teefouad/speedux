@@ -228,7 +228,7 @@ export default class Module {
     }
 
     // if it's a main action, look for a sub reducer that can handle this action
-    Module.getActionTypeMatchers(mainActionType).forEach((matcher) => {
+    Module.getActionTypeMatchers(actionType).forEach((matcher) => {
       if (typeof this.reducers[matcher] !== 'undefined') {
         newState = this.reducers[matcher](newState, action);
       }
@@ -263,7 +263,7 @@ export default class Module {
       // the saga handler will be called right after the reducer so instead of the saga
       // handler executing the callback again, pass it the cached result
       this.cachedCallbackResult = this.cachedCallbackResult || {};
-      this.cachedCallbackResult[actionType] = result;
+      this.cachedCallbackResult[action.type] = result;
 
       return this.mergeStates(state, stateFragment);
     }
@@ -289,7 +289,7 @@ export default class Module {
    * @return  {GeneratorFunction}                 Worker saga generator function.
    */
   createWorkerSaga = actionType => function* workerSaga(action) {
-    const result = this.cachedCallbackResult[actionType];
+    const result = this.cachedCallbackResult && this.cachedCallbackResult[actionType];
     const actionName = this.ownsAction(action.type) ? action.type.replace(/^@@(.*?)\//, '') : 'HANDLE_ACTION';
 
     // check if the callback return value is an iterable (usually a generator function)
@@ -426,6 +426,7 @@ export default class Module {
       actions: self.actions,
       handlers: self.handlers,
       initialState: self.initialState,
+      getState: self.getState,
       get state() { return self.getState(); },
     };
   }
