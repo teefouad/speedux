@@ -40,6 +40,36 @@ export const { addReducer, useMiddleware } = StoreManager;
 export const { getState } = StoreManager;
 
 /**
+ * Dispatches an action. It may accepts two or three parameters:
+ * dispatch(actionType, payload);
+ * dispatch(moduleName, actionName, payload);
+ * @param   {String}  actionType  Type of the action to be dispatched
+ * @param   {String}  moduleName  Name of the module that contains the action
+ * @param   {String}  actionName  Name of the action to be dispatched
+ * @param   {Object}  payload     Action payload object
+ */
+export function dispatch(...args) {
+  const action = {};
+
+  if (helpers.getObjectType(args[args.length - 1]) === 'object') {
+    action.payload = { ...args[args.length - 1] };
+    args.splice(args.length - 1, 1);
+  } else {
+    action.payload = {};
+  }
+
+  if (args.length === 1) {
+    [action.type] = args;
+  } else {
+    const camelCaseName = helpers.toCamelCase(args[1]);
+    const actionName = helpers.toSnakeCase(camelCaseName).toUpperCase();
+    action.type = `@@${args[0]}/${actionName}`;
+  }
+
+  store.dispatch(action);
+}
+
+/**
  * Connects a component to the Redux store and injects its module state and actions into the
  * component props. If the module name is not provided, the name of the component or function
  * will be used instead. If the initial state is not provided, an empty object will be assumed
