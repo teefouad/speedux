@@ -420,11 +420,20 @@ const MyComponent = (props) => {
             
             <button
                 onClick={() => {
-                    dispatch('foo', 'doSomething', {
+                    dispatch('foo.doSomething', {
                         status: 'something is done',
                     });
                 }}
-            >Dispatch an action 'doSomething' from foo module</button>
+            >Dispatch an action 'doSomething' from 'foo' module</button>
+            
+            <button
+                onClick={() => {
+                    dispatch({
+                        type: '@@some/ACTION',
+                        data: 'Lovely day!',
+                    });
+                }}
+            >Dispatch a normal Redux action</button>
         </div>
     );
 };
@@ -625,15 +634,7 @@ const MyComponent = (props) => {
 };
 ```
 
-For dispatching actions from within modules, the `dispatch` function accepts parameters in a slightly different way:
-
-#### dispatch(moduleName, actionName, payload)
-
-| Parameter | Type | Description |
-| :----- | :----- | :----- |
-| moduleName | String | Name of the module that contains the action. |
-| actionName | String | Name of the action to be dispatched. |
-| payload | Object | Action payload object. |
+You can also dispatch actions from within modules using the dot notation, simply provide the module name followed by a dot then the module action:
 
 ```javascript
 import React from 'react';
@@ -644,7 +645,7 @@ const MyComponent = (props) => {
         <div>
             <button
                 onClick={() => {
-                    dispatch('foo', 'logMessage', {
+                    dispatch('foo.logMessage', {
                         message: 'Hello!',
                     });
                 }}
@@ -671,6 +672,28 @@ export default createModule('foo', {
       }
     },
   },
+```
+
+You can also dispatch an action by passing an object (dot notation will not work):
+
+```javascript
+import React from 'react';
+import { dispatch } from 'speedux';
+
+const MyComponent = (props) => {
+    return (
+        <div>
+            <button
+                onClick={() => {
+                    dispatch({
+                        type: 'SEND_MESSAGE',
+                        message: 'Hello!',
+                    });
+                }}
+            >Say Hello</button>
+        </div>
+    );
+};
 ```
 
 &nbsp;

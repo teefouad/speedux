@@ -42,28 +42,35 @@ export const { getState } = StoreManager;
 /**
  * Dispatches an action. It may accepts two or three parameters:
  * dispatch(actionType, payload);
- * dispatch(moduleName, actionName, payload);
- * @param   {String}  actionType  Type of the action to be dispatched
- * @param   {String}  moduleName  Name of the module that contains the action
- * @param   {String}  actionName  Name of the action to be dispatched
- * @param   {Object}  payload     Action payload object
+ * dispatch(actionObject);
+ * @param   {String}  actionType    Type of the action to be dispatched
+ * @param   {Object}  payload       Action payload object
+ * @param   {Object}  actionObject  Normal action object that contains a 'type' property
  */
 export function dispatch(...args) {
-  const action = {};
+  let action = {};
 
-  if (helpers.getObjectType(args[args.length - 1]) === 'object') {
-    action.payload = { ...args[args.length - 1] };
-    args.splice(args.length - 1, 1);
-  } else {
-    action.payload = {};
-  }
+  if (helpers.getObjectType(args[0]) === 'object') {
+    action = helpers.deepCopy(args[0]);
+  } else
+  if (helpers.getObjectType(args[0]) === 'string') {
+    // set the type
+    if (/^([^.]*?)\.([^.]*?)$/.test(args[0])) {
+      const [moduleName, moduleAction] = args[0].split('.');
+      const camelCaseName = helpers.toCamelCase(moduleAction);
+      const actionName = helpers.toSnakeCase(camelCaseName).toUpperCase();
+      action.type = `@@${moduleName}/${actionName}`;
+    } else {
+      [action.type] = args;
+    }
 
-  if (args.length === 1) {
-    [action.type] = args;
-  } else {
-    const camelCaseName = helpers.toCamelCase(args[1]);
-    const actionName = helpers.toSnakeCase(camelCaseName).toUpperCase();
-    action.type = `@@${args[0]}/${actionName}`;
+    // set the payload
+    if (helpers.getObjectType(args[1]) === 'object') {
+      action.payload = { ...args[1] };
+      args.splice(1, 1);
+    } else {
+      action.payload = {};
+    }
   }
 
   store.dispatch(action);
