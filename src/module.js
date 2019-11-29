@@ -1,8 +1,9 @@
 /**
  * Dependency imports.
  */
+import { bindActionCreators } from 'redux';
 import {
-  takeLatest,
+  takeEvery,
   put,
   call,
 } from 'redux-saga/effects';
@@ -10,300 +11,175 @@ import {
 /**
  * Local imports.
  */
+import store from './store';
+import dispatch from './dispatch';
 import * as helpers from './helpers';
 
-/**
- * Class definition.
- */
-export default class Module {
-  constructor(options = {}) {
-    this.config(options);
-  }
+const META_SYMBOL = Symbol('@@speedux/META');
 
-  static defaults = {
-    // unique identifier key for the module
-    name: '',
-    // namespace to use when passing state keys as props
-    stateKey: 'state',
-    // namespace to use when passing action creators as props
-    actionsKey: 'actions',
-    // reference to the store object, mainly used to retrieve the state
-    store: null,
-    // hashmap of the module actions (each action is a normal or a generator function)
-    actions: {},
-    // hashmap of handler functions, use the action type as the key or the function name
-    // and a reference to the handler function as the value
-    handlers: {},
-    // initial state object of the module
-    initialState: {},
-  };
-
-  // a hashmap of all the action types for the module with the name as the key
-  // and the prefixed type as the value
-  types = {};
-  // a hashmap of all the action creator functions for the module with the action
-  // name in camelCase as the key and the action creator function as the value
-  actionCreators = {};
-  // a hashmap of sub reducer functions, for each registered action
-  // the main reducer function of the module will check this hash table whenever
-  // it is called with an action to allow each sub reducer to process the action
-  reducers = {};
-  // a hashmap of all the saga generator functions for the module with the action
-  // type as the key and the generator function as the value
-  sagas = {};
-  // a hashmap of all the assigned saga workers with the action type as the key and
-  // the generator function as the value
-  workerSagas = {};
-
-  /**
-   * Configures the module with a configuration object
-   * @param {Object}    options     Configuration object which may hold one or more of
-   *                                the following keys:
-   *                                - name (String)
-   *                                Unique identifier key for the module
-   *                                - stateKey (String)
-   *                                Namespace to use when passing state keys as props
-   *                                - actionsKey (String)
-   *                                Namespace to use when passing action creators as props
-   *                                - actions (String)
-   *                                Hashmap of the module actions (each action is a normal
-   *                                or a generator function)
-   *                                - handlers (String)
-   *                                Hashmap of handler functions, use the action type as
-   *                                the key or the function name
-   *                                - initialState (String)
-   *                                Initial state object of the module
-   */
-  config = (options) => {
-    // append to the current module configuration
-    const config = {
-      ...Module.defaults,
-      ...this.currentConfig,
-      ...options,
-    };
-
-    // setup the properties
+class Module {
+  constructor(config) {
+    this.config = config;
     this.name = config.name;
-    this.stateKey = config.stateKey;
-    this.actionsKey = config.actionsKey;
-    this.store = config.store;
-    this.initialState = helpers.deepCopy(config.state || config.initialState);
-    this.actions = {};
-    this.handlers = {};
-    this.currentConfig = helpers.deepCopy(config);
-
-    // initialize the state
-    this.state = helpers.deepCopy(this.initialState);
-
-    // create all sub-reducers
-    this.createSubReducers();
-  }
-
-  /**
-   * Returns the module prefix. This is mainly used to prefix action types to allow
-   * using the same action name with different modules without conflicting each other.
-   */
-  getPrefix = () => {
-    if (this.name) {
-      return `@@${this.name}/`;
-    }
-
-    return '';
-  }
-
-  /**
-   * Sets the module name. This will reset all action types, action creators and sub-reducers.
-   * @param {String}     name       New name for the module.
-   */
-  setName = (name) => {
-    this.name = name;
-    this.types = {};
+    this.stateKey = config.stateKey || 'state';
+    this.actionsKey = config.actionsKey || 'actions';
+    this.dispatchKey = config.dispatchKey || 'dispatch';
+    this.globalStateKey = config.globalStateKey || 'globalState';
     this.actionCreators = {};
-    this.reducers = {};
+    this.actionToReducerMap = {};
+    this.handlerToReducerMap = {};
     this.sagas = {};
     this.workerSagas = {};
-
-    this.createSubReducers();
+    this.reducer = state => state;
+    this.build();
   }
 
-  /**
-   * Creates the action creator functions, the sagas, the main reducer function and registers
-   * the action type string.
-   * @param {String}    name        An uppercase snake_case string that represents the action
-   *                                name. For example 'ADD_COUNT' or 'CHANGE_USER_EMAIL'. You can
-   *                                use camelCase or include spaces, dashes and underscore as well.
-   * @param {Function}  callback    A function that returns an object. The returned object
-   *                                represents a state fragment which is used to update the
-   *                                state object. For asyncronous actions, use a generator
-   *                                function instead.
-   */
-  createAction = (name, callback = () => null) => {
-    const camelCaseName = helpers.toCamelCase(name);
-    const actionName = helpers.toSnakeCase(camelCaseName).toUpperCase();
-    const actionType = `${this.getPrefix()}${actionName}`;
-    const argNames = helpers.getArgNames(callback);
+  build = () => {
+    /* build action creators ---------- */
+    Object.entries(this.config.actions || {}).forEach(([name, callback]) => {
+      const camelCaseName = helpers.toCamelCase(name);
+      const actionName = helpers.toSnakeCase(camelCaseName).toUpperCase();
+      const actionType = `@@${this.name}/${actionName}`;
+      const argNames = helpers.getArgNames(callback);
 
-    // allows using the defined action as a reference to the prefixed action type
-    this.actions[name] = callback.bind(this.getCallbackContext());
-    this.actions[name].toString = () => actionType;
+      if (callback.toString().includes('undefined.getState(')) {
+        throw new Error(`Action '${this.name}.${name}' cannot call 'this.getState()'. Try using a normal function instead of an arrow function.`);
+      }
 
-    // register type
-    this.types[actionName] = actionType;
+      this.actionCreators[camelCaseName] = (...args) => {
+        // build the payload object
+        const payload = argNames.reduce((prev, next, index) => ({
+          ...prev,
+          [next]: args[index],
+        }), {});
 
-    // build the action creator function
-    this.actionCreators[camelCaseName] = (...args) => {
-      // build the payload object
-      const payload = argNames.reduce((prev, next, index) => ({
-        ...prev,
-        [next]: args[index],
-      }), {});
+        // then use it to build the action object
+        const actionObject = {
+          type: actionType,
+          payload,
+        };
 
-      // then use it to build the action object
-      const actionObject = {
-        type: actionType,
-        payload,
+        return actionObject;
       };
 
-      return actionObject;
+      this.actionToReducerMap[actionType] = this.createSubReducer(actionType, callback, argNames, 'create');
+      this.sagas[`create:${actionType}`] = this.createSaga(actionType, 'create');
+    });
+
+    /* build handlers ----------------- */
+    Object.entries(this.config.handlers || {}).forEach(([name, callback]) => {
+      let actionType = name;
+      const argNames = helpers.getArgNames(callback);
+
+      if (callback.toString().includes('undefined.getState(')) {
+        throw new Error(`Action '${this.name}.${name}' cannot call 'this.getState()'. Try using a normal function instead of an arrow function.`);
+      }
+
+      if (/^(.*?)\.(.*?)$/.test(actionType)) {
+        const [moduleName, camelCaseName] = actionType.split('.');
+        const actionName = helpers.toSnakeCase(camelCaseName).toUpperCase();
+        actionType = `@@${moduleName === 'this' ? this.name : moduleName}/${actionName}`;
+      }
+
+      this.handlerToReducerMap[actionType] = this.createSubReducer(actionType, callback, argNames, 'handle');
+      this.sagas[`handle:${actionType}`] = this.createSaga(actionType, 'handle');
+    });
+
+    /* build reducer ------------------ */
+    this.reducer = (state = {}, action) => {
+      // the action type might be in normal form, such as: '@@prefix/ACTION_NAME'
+      // or it may contain a sub action type: '@@prefix/ACTION_NAME/SUB_ACTION_NAME'
+      const actionType = action.type;
+      const mainActionType = (actionType.match(/@@(.*?)\/((.*?)(?=\/)|(.*?)$)/) || [])[0] || actionType;
+      const subActionType = actionType.replace(mainActionType, '').slice(1);
+
+      this.cachedState = state;
+
+      // look for a sub reducer that can handle this action
+      this.getActionTypeMatchers(action.type).forEach((matcher) => {
+        if (this.actionToReducerMap[matcher]) {
+          this.cachedState = this.actionToReducerMap[matcher](this.cachedState, action);
+        } else if (
+          this.actionToReducerMap[mainActionType]
+          && subActionType === 'UPDATE'
+          && action[META_SYMBOL] && action[META_SYMBOL].mode === 'create'
+        ) {
+          this.cachedState = helpers.mergeObjects(this.cachedState, action.payload || {});
+        }
+
+        if (this.handlerToReducerMap[matcher]) {
+          this.cachedState = this.handlerToReducerMap[matcher](this.cachedState, action);
+        } else if (
+          this.handlerToReducerMap[mainActionType]
+          && subActionType === 'UPDATE'
+          && action[META_SYMBOL] && action[META_SYMBOL].mode === 'handle'
+        ) {
+          this.cachedState = helpers.mergeObjects(this.cachedState, action.payload || {});
+        }
+      });
+
+      return this.cachedState;
     };
 
-    // build the reducer function
-    this.reducers[actionType] = this.createSubReducer(actionType, callback, argNames, 'create');
+    /* map state to props ------------- */
+    this.mapStateToProps = (state) => {
+      const { [this.name]: ownState, ...otherStates } = state;
 
-    // build the saga handler
-    this.sagas[actionType] = this.createSaga(actionType);
-  }
+      const globalState = Object
+        .entries(this.config.globalState || {})
+        .reduce((p, [name, query]) => ({
+          ...p,
+          [name]: helpers.queryState(query, query === true ? otherStates[name] : otherStates),
+        }), {});
 
-  /**
-   * Creates a sub reducer function to handle the provided action type.
-   * @param {String}    actionType  Action type to handle.
-   * @param {Function}  callback    A function that returns an object. The returned object
-   *                                represents a state fragment which is used to update the
-   *                                state object. For asyncronous actions, use a generator
-   *                                function instead.
-   */
-  handleAction = (actionType, callback = () => null) => {
-    const argNames = helpers.getArgNames(callback);
+      return {
+        [this.stateKey]: ownState,
+        [this.globalStateKey]: globalState,
+      };
+    };
 
-    this.handlers[actionType] = callback.bind(this.getCallbackContext());
+    /* map dispatch to props ---------- */
+    this.mapDispatchToProps = dispatchFunc => bindActionCreators(this.actionCreators, dispatchFunc);
 
-    // build the reducer function
-    this.reducers[actionType] = this.createSubReducer(actionType, callback, argNames, 'handle');
-
-    // build the saga handler
-    this.sagas[actionType] = this.createSaga(actionType);
-  }
-
-  /**
-   * Creates all sub reducers for the module.
-   */
-  createSubReducers = () => {
-    Object.entries(this.currentConfig.actions).forEach(([actionName, actionCallback]) => {
-      this.createAction(actionName, actionCallback);
-    });
-
-    Object.entries(this.currentConfig.handlers).forEach(([actionType, handlerCallback]) => {
-      this.handleAction(actionType, handlerCallback);
+    /* combine props ------------------ */
+    this.combineProps = (stateProps, dispatchProps, ownProps) => ({
+      ...ownProps,
+      ...stateProps,
+      [this.actionsKey]: { ...dispatchProps },
+      [this.dispatchKey]: dispatch,
     });
   }
 
-  /**
-   * The main reducer function for the module.
-   */
-  reducer = (state = this.initialState, action = { type: '' }) => {
-    // the action type might be in normal form, such as: '@@prefix/ACTION_NAME'
-    // or it may contain a sub action type: '@@prefix/ACTION_NAME/SUB_ACTION_NAME'
-    const actionType = action.type;
-    const mainActionType = (actionType.match(/@@(.*?)\/((.*?)(?=\/)|(.*?)$)/) || [])[0] || actionType;
-    const subActionType = actionType.replace(mainActionType, '').slice(1);
-    const actionName = this.ownsAction(mainActionType) ? mainActionType.replace(/^@@(.*?)\//, '') : 'HANDLE_ACTION';
+  createSubReducer = (actionType, callback, argNames, mode) => (state = {}, action = null) => {
+    const callbackResult = this.executeCallback(callback, action, argNames, mode);
+    const callbackResultType = helpers.getObjectType(callbackResult);
+    const stateFragment = (callbackResultType === 'object' ? callbackResult : {});
 
-    let newState = state;
+    // the saga handler will be called right after the reducer so instead of the saga
+    // handler executing the callback again, pass it the cached result
+    this.cachedCallbackResult = this.cachedCallbackResult || {};
+    this.cachedCallbackResult[`${mode}:${action.type}`] = callbackResult;
 
-    // if the sub action is 'update', just update the state with the payload object
-    if (mainActionType === `${this.getPrefix()}${actionName}` && subActionType === 'UPDATE') {
-      newState = this.mergeStates(state, action.payload || {});
-      this.state = newState;
-      return newState;
-    }
+    return helpers.mergeObjects(state, stateFragment);
+  };
 
-    // if it's a main action, look for a sub reducer that can handle this action
-    Module.getActionTypeMatchers(actionType).forEach((matcher) => {
-      if (typeof this.reducers[matcher] !== 'undefined') {
-        newState = this.reducers[matcher](newState, action);
-      }
-    });
+  createSaga = (actionType, mode) => function* saga() {
+    this.workerSagas[`${mode}:${actionType}`] = function* workerSaga(action) {
+      const result = this.cachedCallbackResult && this.cachedCallbackResult[`${mode}:${actionType}`];
 
-    // if it's an irrelevant action, just return the state
-    this.state = newState;
-
-    return newState;
-  }
-
-  /**
-   * Creates and returns a sub reducer function for a given action type.
-   * @param   {Object}      actionType    Type of the action for which the reducer will be created.
-   * @param   {Function}    callback      The callback function assigned to the action by calling
-   *                                      `createAction` or `handleAction`.
-   * @param   {Array}       argNames      An array of strings that represent the names of arguments
-   *                                      the callback function expects.
-   * @param   {String}      mode          A string that can be one of two values, 'create' if the
-   *                                      callback was assigned using `createAction` or 'handle` if
-   *                                      the callback was assigned using `handleAction`.
-   * @return  {Function}                  A reducer function that can handle the given action type.
-   */
-  createSubReducer = (actionType, callback, argNames, mode) => (state, action) => {
-    const matchers = Module.getActionTypeMatchers(action.type);
-
-    if (matchers.includes(actionType)) {
-      const result = this.executeCallback(action, callback, argNames, mode);
-      const resultType = helpers.getObjectType(result);
-      const stateFragment = (resultType === 'object' ? result : {});
-
-      // the saga handler will be called right after the reducer so instead of the saga
-      // handler executing the callback again, pass it the cached result
-      this.cachedCallbackResult = this.cachedCallbackResult || {};
-      this.cachedCallbackResult[action.type] = result;
-
-      return this.mergeStates(state, stateFragment);
-    }
-
-    return state;
-  }
-
-  /**
-   * Creates and returns a saga generator function for a given action type.
-   * @param   {String}              actionType    Type of the action for which the saga will
-   *                                              be created.
-   * @return  {GeneratorFunction}                 Saga generator function.
-   */
-  createSaga = actionType => function* saga() {
-    this.workerSagas[actionType] = this.createWorkerSaga(actionType);
-    yield takeLatest(actionType, this.workerSagas[actionType]);
-  }.bind(this)
-
-  /**
-   * Creates and returns a worker saga generator function for a given action type.
-   * @param   {String}              actionType    Type of the action for which the saga worker will
-   *                                              be created.
-   * @return  {GeneratorFunction}                 Worker saga generator function.
-   */
-  createWorkerSaga = actionType => function* workerSaga(action) {
-    const result = this.cachedCallbackResult && this.cachedCallbackResult[actionType];
-    const actionName = this.ownsAction(action.type) ? action.type.replace(/^@@(.*?)\//, '') : 'HANDLE_ACTION';
-
-    // check if the callback return value is an iterable (usually a generator function)
-    // if it is an iterable then consume it
-    if (result && typeof result[Symbol.iterator] === 'function') {
-      try {
+      // check if the callback return value is an iterable (usually a generator function)
+      // if it is an iterable then consume it
+      if (result && typeof result[Symbol.iterator] === 'function') {
         // `data` will be assigned to each `next()` call
         let data;
         // `isDone` will be true when `next()` returns done as true
         let isDone = false;
-        // the while loop will break after a maximum of 50 calls
-        let breakAfter = 50;
+        // the while loop will break after a maximum of 1000 calls
+        let breakAfter = 1000;
 
         while (!isDone) {
+          this.cachedState = store.getState()[this.name];
+
           const next = result.next(data);
           const nextResult = next.value;
 
@@ -311,13 +187,31 @@ export default class Module {
 
           // if the yielded value is a Promise, resolve it then continue
           if (nextResult instanceof Promise) {
-            data = yield call(() => nextResult);
+            let error = false;
+
+            data = yield call(() => nextResult.catch((e) => {
+              error = e;
+              return Promise.resolve(e);
+            }));
+
+            if (error) {
+              yield put({
+                type: `${action.type}/ERROR`,
+                message: error.message,
+              });
+            }
           } else
           // if the yielded value is an object, use it to update the state
           if (helpers.getObjectType(nextResult) === 'object') {
             yield put({
-              type: `${this.getPrefix()}${actionName}/UPDATE`,
+              type: `${action.type}/UPDATE`,
               payload: nextResult,
+              get [META_SYMBOL]() {
+                return {
+                  mode,
+                  async: true,
+                };
+              },
             });
           }
 
@@ -325,119 +219,47 @@ export default class Module {
 
           // safety break
           if (breakAfter === 0) {
-            throw new Error('An async action handler yielded more than 50 values.');
+            throw new Error('An async action or handler yielded more than 1000 values.');
           }
         }
 
         // indicate that the async action has completed by dispatching
         // a COMPLETE sub action
         yield put({
-          type: `${this.getPrefix()}${actionName}/COMPLETE`,
-        });
-      } catch (e) {
-        window.console.error(e);
-
-        yield put({
-          type: `${this.getPrefix()}${actionName}/ERROR`,
-          message: e.message,
+          type: `${action.type}/COMPLETE`,
         });
       }
-    }
-  }.bind(this)
+    }.bind(this);
 
-  /**
-   * Returns the component state object or part of it based on a given query. If the
-   * query parameter is a string that uses dot notation, it will return the resolved
-   * value of the given key. If the query is an object, it will return an object that
-   * has the same structure but contains the resolved values. If the query parameter
-   * is not provided, the complete state object will be returned.
-   * @param   {String|Object}   query   A query string or a query object that represents
-   *                                    part of the state object that needs to be fetched.
-   *                                    This parameter is not required.
-   * @return  {Object}                  The state object, part of it or a value in the state object.
-   */
-  getState = (query) => {
-    const state = this.store.getState()[this.name];
+    yield takeEvery(actionType, this.workerSagas[`${mode}:${actionType}`]);
+  }.bind(this);
 
-    // handle query strings
-    if (helpers.getObjectType(query) === 'string') {
-      return helpers.findPropInObject(state, query);
-    }
-
-    // handle query objects
-    if (helpers.getObjectType(query) === 'object') {
-      return Object.keys(query).reduce((prev, next) => ({
-        ...prev,
-        [next]: helpers.findPropInObject(state, query[next]),
-      }), {});
-    }
-
-    return state;
-  }
-
-  /**
-   * Executes a given callback function and passes it getState in the context.
-   * @param   {Object}    action      The action object that was dispatched and caused the
-   *                                  execution of the callback.
-   * @param   {Function}  callback    The callback function assigned to the action by calling
-   *                                  `createAction` or `handleAction`.
-   * @param   {Array}     argNames    An array of strings that represent the names of arguments
-   *                                  the callback function expects.
-   * @param   {String}    mode        A string that can be one of two values, 'create' if the
-   *                                  callback was assigned using `createAction` or 'handle` if
-   *                                  the callback was assigned using `handleAction`.
-   * @return  {Object}                Either an object which will be used to update the state
-   *                                  or a generator object.
-   */
-  executeCallback = (action, callback, argNames, mode = 'create') => {
+  executeCallback = (callback, action, argNames, mode) => {
+    const context = this.getCallbackContext();
     const callbackArgs = mode === 'create' ? argNames.map(arg => action.payload[arg]) : [action];
-    return callback.apply(this.getCallbackContext(), callbackArgs);
+    return callback.apply(context, callbackArgs);
   }
 
-  /**
-   * Merges two state objects and returns the merged object as a new copy.
-   * @param   {Object}  stateA    First state object.
-   * @param   {Object}  stateB    Second state object.
-   * @return  {Object}            The merged state object.
-   */
-  mergeStates = (stateA, stateB) => Object.keys(stateB).reduce(
-    (prev, next) => helpers.findPropInObject(prev, next, false, stateB[next]),
-    { ...stateA },
-  )
-
-  /**
-   * Checks whether the module owns (has created) the provided action type.
-   * @param   {String}    actionType    Action type in question.
-   * @return  {Boolean}                 A boolean that represents whether the action type
-   *                                    is owned (was created) by the module or not.
-   */
-  ownsAction = actionType => Object.values(this.types).includes(actionType)
-
-  /**
-   * Returns the context used for a callback (action or handler)
-   * @return  {Object}   An object that is provided as a context to `createAction` and
-   *                     `handleAction` callback functions.
-   */
   getCallbackContext = () => {
     const self = this;
 
     return {
-      name: self.name,
-      actions: self.actions,
-      handlers: self.handlers,
-      initialState: self.initialState,
+      ...self.config.actions,
       getState: self.getState,
-      get state() { return self.getState(); },
+      getGlobalState: self.getGlobalState,
+      isError: e => e instanceof Error,
     };
   }
 
-  /**
-   * Creates an array of matchers for a given action type.
-   * @param   {String} actionType   Action type to build the array of matchers against.
-   * @return  {Array}               An array that represents the possible matchers for a
-   *                                given action type.
-   */
-  static getActionTypeMatchers(actionType) {
+  getState = query => helpers.queryState(query, this.cachedState)
+
+  getGlobalState = (query) => {
+    const globalState = { ...store.cachedState };
+    delete globalState[this.name];
+    return helpers.queryState(query, globalState);
+  }
+
+  getActionTypeMatchers = (actionType) => {
     const regex = /@@(.+?)\/(.+)/;
     let moduleName = '';
     let actionName = actionType;
@@ -457,3 +279,5 @@ export default class Module {
     ];
   }
 }
+
+export default Module;

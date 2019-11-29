@@ -5,17 +5,25 @@
 [![npm downloads](https://img.shields.io/npm/dm/speedux.svg?style=flat-square)](https://www.npmjs.com/package/speedux)
 [![build status](https://img.shields.io/travis/teefouad/speedux/master.svg?style=flat-square)](https://travis-ci.org/teefouad/speedux) 
 
-An opinionated library for managing state in React apps. 
+An opinionated library for managing state in React apps, based on Redux.
 
 &nbsp;
 &nbsp;
 
-# Motivation
-There are many things in life that are fun, working with Redux is not one of them. Redux is a great solution for state management but requires writing a lot of boilerplate code to setup and use.
+# Contents
 
-Speedux reduces the amount of boilerplate code that you need to write in order to use Redux, which gives you peace of mind and more time to build the important stuff.
-
-Speedux's API is simple and intuitive, you basically describe the state object and how it should be updated using plain JavaScript objects and functions.
+- [Installation](#installation)  
+- [Demos](#demos)  
+- [Quick Tutorial](#quick-tutorial)  
+- [Asyncronous Actions](#asyncronous-actions)  
+- [Handling Errors](#handling-errors)  
+- [Listening to Actions](#listening-to-actions)  
+- [Dispatching Actions](#dispatching-actions)  
+- [Updating the State](#updating-the-state)  
+- [Middlewares](#middlewares)  
+- [API](#api)  
+- [The Configuration Object](#the-configuration-object)  
+- [License](#license)
 
 &nbsp;
 &nbsp;
@@ -35,22 +43,32 @@ yarn add speedux
 &nbsp;
 &nbsp;
 
-# Getting Started
+# Demos
 
-Let's start with a simple counter app that displays three buttons. One button increases the count on click, another button decreases the count and a third button would reset the count.
+[Todos App](https://codesandbox.io/s/speedux-demo-todos-88ouj)  
+[Shopping Cart App](https://codesandbox.io/s/speedux-demo-shop-7hupq)
 
-### The entry file
-Start with the application entry file, it's usually the _src/index.js_ file (assuming create-react-app). You would only need to import the `store` and `Provider` from Speedux and wrap your application with the `Provider` while passing it the `store` as a property. Normal Redux stuff but with less code.
+&nbsp;
+&nbsp;
 
-```javascript
+# Quick Tutorial
+
+Using Speedux is pretty easy and straight-forward. First step is to wrap your application in a `Provider` component and the second step is to use the [`connect`](#connectcomponent-configuration) function to connect your components to the store. Normal Redux stuff but with less code.
+
+To understand how it works, let's take an example of a very simple counter app that displays three buttons. One button increases the count on click, another button decreases the count and a third button would reset the count.
+
+### 1. Wrap your app
+Start with the application entry file, it's usually the _src/index.js_ file (assuming create-react-app). You would only need to import the `Provider` component from Speedux and wrap your application with it.
+
+```jsx
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { store, Provider } from 'speedux';
+import { Provider } from 'speedux';
 
 import Counter from './Counter';
 
 const App = (
-  <Provider store={store}>
+  <Provider>
     <Counter />
   </Provider>
 );
@@ -60,76 +78,58 @@ ReactDOM.render(App, document.getElementById('root'));
 
 That's pretty much all you need to do here.
 
-### The module file
+### 2. Connect your component
 
-Next, create a _module.js_ file that will contain the initial state for your stateful counter component and all the logic required to update it.
+Next step will be inside your component file. Import the [`connect`](#connectcomponent-configuration) function from Speedux and pass it two parameters, the first parameter is your component definition and the second parameter is a [configuration object](#the-configuration-object) that defines the initial state for your connected component and all the logic required to update it.
 
-To create a module, simply call `createModule` and pass it a name for the module (any unique identifier string) and a [configuration object](#the-configuration-object) then export the returned object.
+We want the `Counter` component state to contain a `count` property with an initial value of zero. To update the `count` property, we will use three actions: `increaseCount`, `decreaseCount` and `resetCount`.
 
-We want our state to contain a `count` property with an initial value of zero. To update the `count` property, we need three actions: `increaseCount`, `decreaseCount` and `resetCount`.
+```jsx
+import React from 'react';
+import { connect } from 'speedux'; 
 
+const Counter = ({ state, actions }) => (
+  <div>
+    <h1>Count is: { state.count }</h1>
 
-```javascript
-import { createModule } from 'speedux';
+    <button onClick={actions.increaseCount}>
+      Increase count
+    </button>
 
-export default createModule('counter', {
+    <button onClick={actions.decreaseCount}>
+      Decrease count
+    </button>
+
+    <button onClick={actions.resetCount}>
+      Reset count
+    </button>
+  </div>
+);
+
+export default connect(Counter, {
+  name: 'counter',
+  
   state: { count: 0 },
-
+  
   actions: {
     increaseCount() {
-      return {
-        count: this.state.count + 1,
-      };
+      return { count: this.getState('count') + 1 };
     },
-
     decreaseCount() {
-      return {
-        count: this.state.count - 1,
-      };
+      return { count: this.getState('count') - 1 };
     },
-
-    resetCount: () => ({
-      count: 0,
-    }),
+    resetCount() {
+      return { count: 0 };
+    },
   },
 });
 ```
-Note that `this.state` which is used inside the module file is completely different from the local state of the component. Inside the module, `this` refers to the [module object](#the-module-object) and `this.state` refers to the component related state object which lives in the Redux store.
 
-Now we have a module object that describes the state and how it should be updated. Next, we need to use it to connect a component to the Redux store.
+That's it! You have a fully working counter component that is connected to the Redux store.
 
-### The component file
+The [`connect`](#connectcomponent-configuration) function automatically injected the `state` and `actions` props into the component props.
 
-Finally, inside your stateful component file, you would need to call the [`connect`](#connectcomponent-module) function from Speedux and pass it the component and the [module object](#the-module-object) as parameters then export the returned component.
-
-The [`connect`](#connectcomponent-module) function will inject the module state and actions into the component props, each as an object.
-
-```javascript
-import React, { Component } from 'react';
-import { connect } from 'speedux';
-
-import module from './module';
-
-class Counter extends Component {
-  render() {
-    // use object destructuring to access module state and actions
-    const { state, actions } = this.props;
-
-    return (
-      <div>
-        <h1>Count is: {state.count}</h1>
-        <button onClick={actions.increaseCount}>Increase count</button>
-        <button onClick={actions.decreaseCount}>Decrease count</button>
-        <button onClick={actions.resetCount}>Reset count</button>
-      </div>
-    );
-  }
-}
-
-export default connect(Counter, module);
-```
-
-That's it! You have a fully working counter component that is connected to the Redux store. This was a very simple example to get you started. Keep reading to learn how to create asyncronous actions and listen to actions dispatched by other components.
+This was a very simple example to get you started. Next, you can learn more about the [configuration object](#the-configuration-object) or keep reading to learn how to create asyncronous actions and listen to actions dispatched by other components.
 
 &nbsp;
 &nbsp;
@@ -138,32 +138,40 @@ That's it! You have a fully working counter component that is connected to the R
 
 In a real world application, you might need to fetch data from a remote source and update the UI accordingly. For such cases, you can use an asyncronous action. To create an asyncronous action, simply use a generator function instead of a normal function.
 
-Whenever your generator function yields an object, that object will be used to update the Redux state. If your generator function yields a Promise object, the function execution will pause until that promise is resolved and the result will be passed to the generator function on the next call. Here is an example:
+Whenever your generator function yields an object, that object will be used to [update the component state](#updating-the-state) in the Redux store. If your generator function yields a Promise object, the function execution will pause until that promise is resolved and the result will be passed to the generator function on the next call.
 
-```javascript
-export default createModule('fetcher', {
+ Here is an example:
+
+```jsx
+const config = {
+  name: 'dataFetcher',
+
   state: {
     loading: false,
-    data: '',
+    data: null,
   },
 
   actions: {
-    // asyncronous action using a generator function
-    *fetchData() {
-      // yield an object to update the state and indicate that the data is being loaded
+    * fetchData() {
+      // Yield an object to update the state and indicate that
+      // the data is being loaded. You can use `props.state.loading`
+      // to display a spinner or something similar.
       yield { loading: true };
-
-      // yield a promise to fetch the data
-      const data = yield fetch('/api/posts').then(response => response.json());
-
-      // yield an object to update the state and indicate that the data has been completely loaded
+    
+      // Yield a promise to fetch the data
+      const response = yield fetch('/api/posts');
+      // `fetch` resolves to a promise that needs to be resolved to json
+      const data = yield response.json();
+      
+      // Finally, yield an object to populate the state with the
+      // loaded data and indicate that the data has been loaded
       yield {
         loading: false,
         data,
       };
     },
   },
-});
+};
 ```
 
 &nbsp;
@@ -171,229 +179,100 @@ export default createModule('fetcher', {
 
 # Handling Errors
 
-To handle errors in an asyncronous action, you can catch a rejected promise then check if the response is an instance of `Error`:
+To handle errors in an asyncronous action, you can check if the resolved response is an instance of `Error`:
 
-```javascript
-export default createModule('faultyFetcher', {
+```jsx
+const config = {
+  name: 'faultyDataFetcher',
+
   state: {
     loading: false,
-    data: '',
+    data: null,
     error: null,
   },
 
   actions: {
-    *fetchData() {
-      // yield an object to update the state and indicate that the data is being loaded
+    * fetchData() {
+      // Yield an object to update the state and indicate that
+      // the data is being loaded. You can use `props.state.loading`
+      // to display a spinner or something similar.
       yield { loading: true };
-
-      // yield a promise to fetch the data
-      const result = yield fetch('/api/posts').then(response => response.json()).catch(err => err);
-
-      if (result instanceof Error) {
-        yield {
-          error: result.message,
-        };
+      
+      // Yield a promise to fetch the data
+      const response = yield fetch('/api/posts');
+      
+      // Handle loading errors
+      if (response instanceof Error) {
+        yield { error: response.message };
       } else {
-        // yield an object to update the state and indicate that the data has been completely loaded
-        yield {
-          loading: false,
-          data: result.posts,
-        };
+        ...
       }
     },
   },
-});
+};
 ```
+
+You can also use the handy function `this.isError(response)` instead of `response instanceof Error`.
 
 &nbsp;
 &nbsp;
 
 # Listening to Actions
 
-You can use the `handlers` configuration option to listen to any action dispatched by the Redux store. Simply, use the action type as the key and the handler function as the value. For example, if a _foo_ module needs to listen to an action WOO\_HOO dispatched by another module _baz_ and also needs to listen to another action STOP_AUDIO:
+You can use the [`handlers`](#handlers-object) configuration option to listen to any action dispatched by the Redux store.
 
-```javascript
-export default createModule('foo', {
-    handlers: {
-      '@@baz/WOO_HOO'(action) { ... },
-      'STOP_AUDIO'(action) { ... },
-    }
-});
-```
+Simply, use the action type as the key and the handler function as the value. The handler function will always receive the action object as a single parameter and should return an object that specifies the [state keys that need to be updated](#updating-the-state) and their new values.
 
-If your code contains side effects, you can use a generator function instead of a normal function:
+Here is an example:
 
-```javascript
-export default createModule('foo', {
-    handlers: {
-        *'@@baz/WOO_HOO'(action) { ... }
-    }
-});
-```
+```jsx
+const config = {
+  name: 'routerSpy',
 
-**Note:**
-```javascript
-// This syntax:
-{ '@@baz/WOO_HOO'(action) { ... } }
+  state: { currentPath: null },
 
-// is identical to this:
-{ '@@baz/WOO_HOO': function(action) { ... } }
-```
-
-If the action was created by another Speedux module, you can use the action reference instead of passing the action type as a string:
-
-```javascript
-import bazModule from './components/Baz/module';
-
-// This:
-export default createModule('foo', {
   handlers: {
-    [bazModule.actions.wooHoo](action) { ... }
-  }
-});
+    '@@router/LOCATION_CHANGE': (action) => {
+      return {
+        currentPath: action.payload.location.pathname,
+      };
+    },
+  },
+};
+```
 
-// is identical to this:
-export default createModule('foo', {
+You can also listen to [actions](#actions-object) that were defined in a [`configuration object`](#the-configuration-object) of another connected component.
+
+For example, if we have a connected component `Foo`:
+```jsx
+export default connect(Foo, {
+  name: 'foo',
+
+  actions: {
+    saySomething(message) { ... }
+  },
+  ...
+});
+```
+
+And another connected component `Baz` that needs to listen to action `saySomething` which would be dispatched by component `Foo`:
+```jsx
+export default connect(Baz, {
+  name: 'baz',
+
+  state: {
+    text: null,
+  },
+
   handlers: {
-    '@@baz/WOO_HOO'(action) { ... }
-  }
+    'foo.saySomething': function(action) {
+      return {
+        text: `Foo said: ${action.payload.message}!`
+      };
+    },
+  },
+  ...
 });
-```
-
-&nbsp;
-&nbsp;
-
-# Updating the State
-
-Both action and handler functions define how the state should be updated by returning an object. This object specifies the state keys that need to be updated and their new values. In the following example, `changeFoo` will only update `foo` in the state with value `Bingo` while `fiz` will remain the same.
-
-```javascript
-export default createModule('foo', {
-    state: {
-        foo: 'baz',
-        fiz: 'boo',
-    },
-    actions: {
-        changeFoo() {
-            return { foo: 'Bingo' };
-        }
-    }
-});
-```
-
-### Nested State Keys
-To update deeply nested state keys, you can provide a string that uses dot notation:
-
-```javascript
-export default createModule('foo', {
-    state: {
-        result: 0,
-        data: {
-            list: [
-                { props: { name: 'feeb' } },
-                { props: { name: 'foo' } },
-                { props: { name: 'fiz' } },
-            ],
-        },
-    },
-    
-    actions: {
-        changeFooName(newName) {
-            return { 'data.list[1].props.name': newName };
-        },
-    },
-});
-```
-
-### Wildcard Character: *
-If you would like to modify all items of an array or an object in the state, use a wildcard character:
-
-```javascript
-export default createModule('foo', {
-    state: {
-        list: [
-            { name: 'feeb' },
-            { name: 'foo' },
-            { name: 'fiz' },
-        ],
-    },
-    
-    actions: {
-        changeAllNames(newName) {
-            return { 'list.*.name': newName };
-        },
-    },
-});
-
-/*
-Invoking action changeAllNames('jane') will modify the state to:
-{
-    list: [
-        { name: 'jane' },
-        { name: 'jane' },
-        { name: 'jane' },
-    ],
-}
-*/
-```
-
-You can also use a wildcard for reading the state as well:
-
-```javascript
-export default createModule('foo', {
-    state: {
-        list: [
-            { name: 'feeb' },
-            { name: 'foo' },
-            { name: 'fiz' },
-        ],
-    },
-    
-    actions: {
-        logAllNames() {
-            const names = this.getState('list.*.name');
-            console.log(names); // ['feeb', 'foo', 'fiz']
-        },
-    },
-});
-```
-
-### Mapper Function
-
-You can pass a mapper function that returns the new value of the state key:
-
-```javascript
-export default createModule('foo', {
-    state: {
-        list: [
-            { count: 151 },
-            { count: 120 },
-            { count: 2 },
-        ],
-    },
-    
-    actions: {
-        setMinimum() {
-            return {
-                'list.*.count': (oldValue) => {
-                    if (oldValue < 50) return 50;
-                    return oldValue;
-                },
-            };
-        },
-    },
-});
-
-/*
-Invoking action setMinimum() will modify the state to:
-{
-    list: [
-        { count: 151 },
-        { count: 120 },
-        { count: 50 },
-    ],
-}
-*/
 ```
 
 &nbsp;
@@ -401,111 +280,272 @@ Invoking action setMinimum() will modify the state to:
 
 # Dispatching Actions
 
-Speedux provides a handy `dispatch` function that lets you dispatch any action and specify the action payload as well. Here is an example:
+The [`connect`](#connectcomponent-configuration) function automatically injects a `dispatch` function into the component props. You can use the `dispatch` function to dispatch any action and specify its payload as well.
 
-```javascript
+Here is an example:
+
+```jsx
 import React from 'react';
-import { dispatch } from 'speedux';
+import { connect } from 'speedux';
 
-const MyComponent = (props) => {
-    return (
-        <div>
-            <button
-                onClick={() => {
-                    dispatch('SOME_ACTION', {
-                        message: 'Hello!',
-                    });
-                }}
-            >Dispatch a custom action</button>
-            
-            <button
-                onClick={() => {
-                    dispatch('foo.doSomething', {
-                        status: 'something is done',
-                    });
-                }}
-            >Dispatch an action 'doSomething' from 'foo' module</button>
-            
-            <button
-                onClick={() => {
-                    dispatch({
-                        type: '@@some/ACTION',
-                        data: 'Lovely day!',
-                    });
-                }}
-            >Dispatch a normal Redux action</button>
-        </div>
-    );
+const MyComponent = ({ dispatch }) => {
+  // dispatches an action with type 'someAction' and an empty object
+  // as the payload
+  function onClickButtonA() {
+    dispatch('someAction');
+  }
+  
+  // dispatches an action with type 'something' with the specified
+  // object as the payload
+  function onClickButtonB() {
+    dispatch('someAction', { value: 'abc' });
+  }
+  
+  return (
+    <div>
+      <button onClick={onClickButtonA}>
+        Button A
+      </button>
+
+      <button onClick={onClickButtonB}>
+        Button B
+      </button>
+    </div>
+  );
 };
+
+export default connect(MyComponent, {...});
 ```
 
-Local actions inside a module can be dispatched by calling `this.props.actions.actionName()`.
+You can also dispatch [actions](#actions-object) that were defined in a [configuration object](#the-configuration-object) of another connected component.
+
+For example, let's say that we have a component `Profile` that displays the availability of a user:
+```jsx
+export default connect(Profile, {
+  name: 'userProfile',
+
+  state: {
+    userStatus: 'online',  
+  },
+
+  actions: {
+    setUserStatus(userStatus) {
+      return { userStatus };
+    },
+  },
+  ...
+})
+```
+
+And another component `Baz` that needs to trigger the `setUserStatus` action which is defined in the configuration object of component `Profile`:
+```jsx
+
+const Baz = ({ dispatch }) => {
+  function setStatus(status) {
+    dispatch('userProfile.setUserStatus', { userStatus: status });
+  }
+  
+  return (
+    <div>
+      <button onClick={() => setStatus('online')}>
+        Appear Online
+      </button>
+      
+      <button onClick={() => setStatus('offline')}>
+        Appear Offline
+      </button>
+    </div>
+  );
+};
+
+export default connect(Baz, {...})
+```
+
+Note that the payload object keys must match the argument names of the action function that was defined in the configuration object.
 
 &nbsp;
 &nbsp;
 
-# Testing
+# Updating the State
 
-Testing modules is easy and straight-forward, assuming that the initial counter value is `5`. You can test as follows:
+Both [action](#actions-object) and [handler](#handlers-object) functions define how the state should be updated by returning an object. This object specifies the state keys that need to be updated and their new values. In the following example, `changeFoo` will only update `foo` in the state with value `Bingo` while `fiz` will remain the same.
 
-```javascript
-import counterModule from './Counter/module';
+```jsx
+const MyComponent = ({ state, actions }) => {
+  // Before clicking the button: { foo: 'baz', fiz: 'boo' }
+  // After clicking the button: { foo: 'Bingo', fiz: 'boo' }
+  console.log(state);
+  
+  return (
+    <div>
+      <button onClick={actions.changeFoo}>
+        Click me
+      </button>
+    </div>
+  );
+};
 
-describe('counter tests', () => {
-  it('should increase count', () => {
-    expect(counterModule.actions.increaseCount()).toEqual({
-      count: 6,
-    });
-  });
+export default connect(MyComponent, {
+  name: 'myComponent',
 
-  it('should decrease count', () => {
-    expect(counterModule.actions.decreaseCount()).toEqual({
-      count: 4,
-    });
-  });
+  state: {
+    foo: 'baz',
+    fiz: 'boo',
+  },
 
-  it('should reset count', () => {
-    expect(counterModule.actions.resetCount()).toEqual({
-      count: 0,
-    });
-  });
+  actions: {
+    changeFoo() {
+      return { foo: 'Bingo' };
+    }
+  }
 });
 ```
+
+### Nested State Keys
+To update deeply nested state keys, you can use dot notation as a string:
+
+```jsx
+export default connect(MyComponent, {
+  name: 'myComponent',
+
+  state: {
+    data: {
+      list: [
+        { props: { name: 'feeb' } },
+        { props: { name: 'foo' } },
+        { props: { name: 'fiz' } },
+      ],
+    },
+  },
+  
+  actions: {
+    changeFooName(newName) {
+      return { 'data.list[1].props.name': newName };
+    },
+  },
+});
+```
+
+### Wildcard Character: *
+If you would like to modify all items of an array or an object in the state, use a wildcard character:
+
+```jsx
+export default createModule('foo', {
+  state: {
+    list: [
+      { name: 'feeb' },
+      { name: 'foo' },
+      { name: 'fiz' },
+    ],
+  },
+  
+  actions: {
+    changeAllNames(newName) {
+      return { 'list.*.name': newName };
+    },
+  },
+});
+
+/*
+Invoking action changeAllNames('jane') will modify the state to:
+{
+  list: [
+    { name: 'jane' },
+    { name: 'jane' },
+    { name: 'jane' },
+  ],
+}
+*/
+```
+
+You can also use a wildcard for reading the state as well:
+
+```jsx
+export default connect(MyComponent, {
+  name: 'myComponent',
+
+  state: {
+    list: [
+      { name: 'feeb' },
+      { name: 'foo' },
+      { name: 'fiz' },
+    ],
+  },
+  
+  actions: {
+    logAllNames() {
+      const names = this.getState('list.*.name');
+      console.log(names); // ['feeb', 'foo', 'fiz']
+    },
+  },
+});
+```
+
+### Mapper Function
+
+If you need to dynamically calculate the new value of the state key based on the old value, use a mapper function:
+
+```jsx
+export default createModule('foo', {
+  state: {
+    list: [
+      { count: 151 },
+      { count: 120 },
+      { count: 2 },
+    ],
+  },
+  
+  actions: {
+    setMinimum() {
+      return {
+        'list.*.count': (oldValue) => {
+          if (oldValue < 50) return 50;
+          return oldValue;
+        },
+      };
+    },
+  },
+});
+
+/*
+Invoking action setMinimum() will modify the state to:
+{
+  list: [
+    { count: 151 },
+    { count: 120 },
+    { count: 50 },
+  ],
+}
+*/
+```
+
 &nbsp;
 &nbsp;
 
 # Middlewares
 
-To use a middleware, import [`useMiddleware`](#usemiddlewaremiddleware) method and pass it the middleware function. You don't need to use `applyMiddleware` from Redux, this method will be called internally by Speedux. 
-Here is an example using React Router (v4.2.0) and React Router Redux (v5.0.0-alpha.9):
+To use a middleware, import [`useMiddleware`](#usemiddlewaremiddleware) method and pass it the middleware function. You don't need to use `applyMiddleware` from Redux, this method will be called internally by Speedux.
 
-```javascript
-import React from 'react';
-import { render } from 'react-dom';
-import { ConnectedRouter, routerReducer, routerMiddleware } from 'react-router-redux';
-import createHistory from 'history/createBrowserHistory';
-import { Provider, store, addReducer, useMiddleware } from 'speedux';
+Here is an example using React Router DOM (v5.1.2) and Connected React Router (v6.6.1):
 
-import Main from './Main';
+```jsx
+import { Provider, useReducer, useMiddleware } from 'speedux';
+import { ConnectedRouter, connectRouter, routerMiddleware } from 'connected-react-router';
+import { createBrowserHistory } from 'history';
 
-const history = createHistory();
+const history = createBrowserHistory();
 
-// add router reducer
-addReducer('router', routerReducer);
-
-// use the routing middleware
+// connected-react-router requires its reducer to be mounted under 'router'
+useReducer('router', connectRouter(history));
 useMiddleware(routerMiddleware(history));
 
-const App = (
-  <Provider store={store}>
+ReactDOM.render((
+  <Provider>
     <ConnectedRouter history={history}>
-      <Main />
+      ...
     </ConnectedRouter>
   </Provider>
-);
-
-// render your app
-render(App, document.getElementById('root'));
+), document.getElementById('root'));
 ```
 
 &nbsp;
@@ -513,91 +553,51 @@ render(App, document.getElementById('root'));
 
 # API
 
-### createModule(name, config)
-
-Uses a [configuration object](#the-configuration-object) to create and return a reference to a [module object](#the-module-object) that contains the initial state, action creators object and a reducer function. This module object can be used with [`connect`](#connectcomponent-module) function to connect a component to the Redux store.
-
-| Parameter | Type | Description |
-| :----- | :----- | :----- |
-| name | String | Unique identifier key for the module. |
-| config | Object | The [configuration object](#the-configuration-object) for the module. |
-
-##### Example:
-```javascript
-import { createModule } from 'speedux';
-
-export default createModule('foo', {
-  state: {
-    flag: false,
-  },
-
-  actions: {
-    toggleFlag() {
-      return {
-        flag: !this.state.flag,
-      };
-    }
-  }
-});
-```
-
-&nbsp;
-
-### connect(component, module)
-
-Connects a component to the Redux store and injects its state and actions into the component props, each as an object. It accepts two parameters, the component to be connected and the module [configuration object](#the-configuration-object) and returns the connected component.
-
-The `connect` function will automatically map the component state and the actions defined in the module file to the component props. You will be able to access the state via `this.props.state` and component actions can be accessed via `this.props.actions`.
+### connect(component, configuration)
 
 | Parameter | Type | Description |
 | :----- | :----- | :----- |
 | component | Class \| Function | Reference to the class/function of the component to be connected to the store. |
-| module | Object | The [configuration object](#the-configuration-object) for the module. |
+| configuration | Object | The [configuration object](#the-configuration-object) for the component. |
+
+The connect function connects a component to the Redux store and automatically injects four properties into the component props. These properties are `state`, `actions`, `globalState` and `dispatch`.
+
+The `state` prop represents the component state in the Redux store. The default value for the state is an empty object.
+
+The `actions` prop is a list of action dispatcher functions that correspond to the [actions](#actions-object) that were defined in [the configuration object](#the-configuration-object). The default value for the actions prop is an empty object.
+
+The `globalState` prop represents [the states of other connected components](#globalstate-object). The default value for the global state is an empty object.
+
+The `dispatch` prop represents a [function](#dispatchactiontype-payload) that can be used to [dispatch any action](#dispatching-actions).
 
 ##### Example:
-```javascript
+```jsx
 import React from 'react';
 import { connect } from 'speedux';
 
-import module from './module';
+const MyComponent = ({ state, actions, globalState, dispatch }) => {
+  console.log(state); // { value: 'abc' }
+  console.log(actions); // { setValue: function(newValue) {...} }
+  console.log(globalState); // { foo: 'someValue' }
+  console.log(dispatch); // Function
 
-const MyComponent = props => (
-  <div>...</div>
-);
+  return <div>...</div>;
+};
 
-export default connect(MyComponent, module);
-```
+export default connect(MyComponent, {
+  name: 'myComponent',
 
-&nbsp;
-
-### getState(query)
-
-This method returns a Promise that resolves with the state object of a module or part of it based on a given query. If the query parameter is a string that uses dot notation, it will return the resolved value of the given key. If the query is an object, it will return an object that has the same structure but contains the resolved values. If the query parameter is not provided, the complete state object will be returned.
-
-**Note:** If you want to get the state from within the same module, use `this.getState()` instead. Only use this method if, for any reason, you would like to read the _updated_ state of another module.
-
-| Parameter | Type | Description |
-| :----- | :----- | :----- |
-| query | String \| Object | A query string or a query object that represents part of the state object that needs to be fetched. This parameter is not required. |
-
-##### Example:
-```javascript
-import { createModule, getState } from 'speedux';
-
-export default createModule('foo', {
   state: {
-    count: 0,
+    value: 'abc',
   },
 
-  handlers: {
-    *'@@baz/INCREASE_COUNT'() {
-      // assuming that there are two counters, foo and baz
-      // foo count should be synced with baz count, so foo
-      // listens for any INCREASE_COUNT action dispatched by
-      // baz and updates its count value with the current
-      // count value in baz
-      const bazCount = yield getState('baz.count');
-      yield { count: bazCount };
+  globalState: {
+    foo: 'fooComponent.some.value'
+  },
+
+  actions: {
+    setValue(newValue) {
+      return { value: newValue };
     },
   },
 });
@@ -605,100 +605,7 @@ export default createModule('foo', {
 
 &nbsp;
 
-### dispatch(actionType, payload)
-
-The `dispatch` function lets you dispatch any action and specify the action payload as well.
-
-| Parameter | Type | Description |
-| :----- | :----- | :----- |
-| actionType | String | Type of the action to be dispatched. |
-| payload | Object | Action payload object. |
-
-##### Example:
-```javascript
-import React from 'react';
-import { dispatch } from 'speedux';
-
-const MyComponent = (props) => {
-    return (
-        <div>
-            <button
-                onClick={() => {
-                    dispatch('SOME_ACTION', {
-                        message: 'Hello!',
-                    });
-                }}
-            >Dispatch a custom action</button>
-        </div>
-    );
-};
-```
-
-You can also dispatch actions from within modules using the dot notation, simply provide the module name followed by a dot then the module action:
-
-```javascript
-import React from 'react';
-import { dispatch } from 'speedux';
-
-const MyComponent = (props) => {
-    return (
-        <div>
-            <button
-                onClick={() => {
-                    dispatch('foo.logMessage', {
-                        message: 'Hello!',
-                    });
-                }}
-            >Dispatch a 'logMessage' action</button>
-        </div>
-    );
-};
-```
-
-And `foo` module would look something like this:
-
-```javascript
-import { createModule } from 'speedux';
-
-export default createModule('foo', {
-  state: {
-    logs: [],
-  },
-  
-  actions: {
-    logMessage(msg) {
-      return {
-        logs: [...this.state.logs, msg],
-      }
-    },
-  },
-```
-
-You can also dispatch an action by passing an object (dot notation will not work):
-
-```javascript
-import React from 'react';
-import { dispatch } from 'speedux';
-
-const MyComponent = (props) => {
-    return (
-        <div>
-            <button
-                onClick={() => {
-                    dispatch({
-                        type: 'SEND_MESSAGE',
-                        message: 'Hello!',
-                    });
-                }}
-            >Say Hello</button>
-        </div>
-    );
-};
-```
-
-&nbsp;
-
-### addReducer(key, reducer)
+### useReducer(key, reducer)
 
 Allows registering a reducer function that can listen to any action dispatched by the store.
 
@@ -708,174 +615,60 @@ Allows registering a reducer function that can listen to any action dispatched b
 | reducer | Function | Reducer function to use. |
 
 ##### Example:
-```javascript
-import { routerReducer } from 'react-router-redux';
-import { addReducer } from 'speedux';
+```jsx
+import { useReducer } from 'speedux';
+import { connectRouter } from 'connected-react-router';
+import { createBrowserHistory } from 'history';
 
-addReducer('router', routerReducer);
+const history = createBrowserHistory();
+const routerReducer = connectRouter(history);
+
+useReducer('router', routerReducer);
 ```
 
 &nbsp;
 
-### useMiddleware(middleWare)
+### useMiddleware(middleware)
 
 Allows using middleware functions such as React Router middleware and others. You don't need to use `applyMiddleware` from Redux before passing the middleware to this function.
 
 | Parameter | Type | Description |
 | :----- | :----- | :----- |
-| middleWare | Function | Middleware function to use. |
+| middleware | Function | Middleware function to use. |
 
 ##### Example:
-```javascript
-import { routerMiddleware } from 'react-router-redux';
+```jsx
 import { useMiddleware } from 'speedux';
+import { routerMiddleware } from 'connected-react-router';
+import { createBrowserHistory } from 'history';
 
-useMiddleware(routerMiddleware(history)); // assuming a defined history object
+const history = createBrowserHistory();
+
+useMiddleware(routerMiddleware(history));
 ```
 
 &nbsp;
-&nbsp;
 
-# The Configuration Object
+### dispatch(actionType, payload)
 
-The module configuration object may contain one or more of the following properties:
-
-### actions (Object)
-A hash table representing all the actions that may need to be dispatched from the component to update the state. The key or function name will be used to generate the action type. For example, a module with a name `calculator` and a defined action `addNumbers` will dispatch an action of type `@@calculator/ADD_NUMBERS` whenever `addNumbers()` is called.
-
-```javascript
-import { createModule } from 'speedux';
-
-export default createModule('calculator', {
-    state: {
-        result: 0,
-    },
-    
-    actions: {
-        addNumbers(x, y) {
-            return {
-                result: x + y,
-            };
-        }
-    }
-});
-```
-
-The `addNumbers` action can be dispatched from the component by calling `this.props.actions.addNumbers(2,4)`.
-
-An action function should describe how the state is updated by returning an object. Read [Updating the State](#updating-the-state) section for more information.
-
-### handlers (Object)
-The `handlers` object allows listening to any action dispatched by the store. The key represents the action type that needs to be handled and the value represents the handler function. For example, if a _foo_ module needs to listen to an action WOO_HOO dispatched by _baz_:
-
-```javascript
-import { createModule } from 'speedux';
-
-export default createModule('foo', {
-    handlers: {
-        '@@baz/WOO_HOO'(action) { console.log('baz has dispatched woo_hoo!'); },
-        'ANY_OTHER_ACTION'(action) { console.log('some other action was dispatched!'); },
-    }
-});
-```
-
-In this example, whenever the `Baz` component dispatches a `WOO_HOO` action, `Foo` will be able detect it and act accordingly. A handler function always receives the action object as a single parameter.
-
-A handler function should describe how the state is updated by returning an object. Read [Updating the State](#updating-the-state) section for more information.
-
-### stateKey (String)
-The `stateKey` is used as a property name when the related Redux state object is injected into the component props. The default value is 'state'.
-
-### actionsKey (String)
-The `actionsKey` is used as a property name when the action creator functions object is injected into the component props. The default value is 'actions'.
-
-### state (Object)
-The initial state object for the module. This object is used to populate the Redux state object with initial values. If not provided, an empty object will be used as the initial state.
-
-&nbsp;
-
-# The Module Object
-
-In most cases you will not need to work directly with the module object that is returned from a [`createModule`](#createmodulename-config) call. You do not need to use or know anything about the following methods, but keep reading if you are curious.
-
-### config(configObject)
-Updates the current configuration of the module. The `configObject` parameter represents keys that should be configured and their new values. Here is an example:
-
-```javascript
-import fooModule from './foo/module';
-
-fooModule.config({
-  stateKey: 'baz', // changes stateKey to 'baz'
-});
-```
-
-### setName(name)
-Accepts a name for the module as a string. This method sets the name of the module and updates the action types and reducers. Here is an example:
-
-```javascript
-import fooModule from './foo/module';
-
-fooModule.setName('baz');
-```
-
-### createAction(name, callback)
-
-This method builds an action creator function and a sub-reducer to handle the created action. Using this method is equivalent to defining an action in the module [configuration object](#the-configuration-object).
+The `dispatch` function is automatically injected into the props of a connected component and lets you dispatch any action and specify the action payload as well.
 
 | Parameter | Type | Description |
 | :----- | :----- | :----- |
-| name | String | A string that represents the action name. |
-| callback | Function | A callback function that defines how the state should be updated by returning an object. Read [Updating the State](#updating-the-state) section for more information. |
+| actionType | String | Type of the action to be dispatched. |
+| payload | Object | Action payload object. |
 
-##### Example:
-```javascript
-import counterModule from './Counter/module';
+See [Dispatching Actions](#dispatching-actions) for an example.
 
-counterModule.createAction('addNumbers', function(numA, numB) {
-    return {
-        result: numA + numB,
-    };
-});
-```
 
-If your code contains side effects, you can use a generator function instead of a normal function:
+&nbsp;
 
-```javascript
-counterModule.createAction('addNumbers', function* (numA, numB) {
-    yield {
-        result: numA + numB,
-    };
-    
-    ...
-});
-```
-
-### handleAction(name, callback)
-
-Use this method to handle any action dispatched by the store and update the state accordingly. Just like [`createAction`](#createactionname-callback), it may accept a generator function as a callback to handle side effects in your code.
-
-| Parameter | Type | Description |
-| :----- | :----- | :----- |
-| name | String | A string that represents the action type. |
-| callback | Function | A callback function that receives the action object as a single parameter and defines how the state should be updated by returning an object. Read [Updating the State](#updating-the-state) section for more information. |
-
-##### Example:
-```javascript
-import fooModule from './Foo/module';
-
-fooModule.handleAction('@@router/CHANGE_PATH', function({ payload }) {
-    console.log(payload.newPath);
-    return {
-        routeChanged: true,
-    };
-});
-```
 
 ### getState(query)
 
-This method returns the state object of the module or part of it based on a given query. If the query parameter is a string that uses dot notation, it will return the resolved value of the given key. If the query is an object, it will return an object that has the same structure but contains the resolved values. If the query parameter is not provided, the complete state object will be returned.
+This method is only available in the context of [action](#actions-object) and [handler](#handlers-object) functions and returns the Redux state object of the connected component or part of it based on a given query.
 
-**Note:** If this method is used outside of an action function or a handler function, it is not guaranteed to return the updated state of the module. For such cases, use [`getState`](#getstatequery) from Speedux instead.
+If the query parameter is in dot notation as a string, it will return the resolved value of the given key path. If the query is an object, it will return an object that has the same structure but contains the resolved values. If the query parameter is not provided, the complete state object will be returned.
 
 | Parameter | Type | Description |
 | :----- | :----- | :----- |
@@ -883,9 +676,9 @@ This method returns the state object of the module or part of it based on a give
 
 ##### Example:
 ```javascript
-import { createModule } from 'speedux';
+export default connect(MyComponent, {
+  name: 'foo',
 
-export default createModule('foo', {
   state: {
     count: 0,
     data: {
@@ -923,6 +716,112 @@ export default createModule('foo', {
   },
 });
 ```
+
+&nbsp;
+&nbsp;
+
+# The Configuration Object
+
+The configuration object may contain one or more of the following keys:
+
+### name (String)
+
+The `name` key is the only required key in the configuration object. It *must* be unique for each component as it is used to identify the Redux state and actions for the component.
+
+### state (Object)
+Represents the component state (or initial state) in the Redux store. If not provided, an empty object will be used as the component initial state.
+
+The component state can only be updated by returning objects from action or handler functions. (explained below)
+
+### actions (Object)
+A list of all the actions that may need to be dispatched from the component to update the state. Provide the action name as the key and the function as the value.
+
+The key or function name will be used to generate the action type. For example, a name `calculator` with a defined action `addNumbers` will dispatch an action of type `@@calculator/ADD_NUMBERS` whenever `props.actions.addNumbers()` is called.
+
+The function should return an object that specifies the state keys that need to be updated and their new values.
+
+```jsx
+const config = {
+  name: 'calculator',
+
+  state: {
+    result: 0,
+  },
+
+  actions: {
+    addNumbers(x, y) {
+      return { result: x + y };
+    }
+  }
+};
+```
+
+To create an asyncronous action, simply use a generator function instead of a normal function.
+
+Whenever your generator function yields an object, that object will be used to update the component state in the Redux store. If your generator function yields a Promise object, the function execution will pause until that promise is resolved and the result will be passed to the generator function on the next call.
+
+See [Asyncronous Actions](#asyncronous-actions) for examples.
+
+### handlers (Object)
+A list of all the actions that the component needs to listen to and update its state accordingly. Provide the action type as the key and the handler function as the value. You can listen to actions dispatched by other components or any action dispatched by the Redux store.
+
+The handler function will always receive the action object as a single parameter and should return an object that specifies the state keys that need to be updated and their new values.
+
+See [Listening to Actions](#listening-to-actions) for examples.
+
+### globalState (Object)
+The `globalState` key allows reading states of other connected components. Simply provide an object with the name as the key and the state query as the value.
+
+For example, if we have a connected component `Cart`:
+```jsx
+export default connect(Cart, {
+  name: 'shoppingCart',
+
+  state: {
+    items: [
+      { id: 123, price: 12 },
+      { id: 456, price: 34 },
+      { id: 789, price: 56 },
+    ],
+    totalCost: 102,
+    discountCode: 'u324y32',
+  },
+  ...
+});
+```
+
+And another connected component `Checkout` that needs to read items inside the state of the `Cart` component:
+
+```jsx
+
+const Checkout = ({ globalState }) => {
+  console.log(globalState.cartItems); // [{...}, {...}, {...}]
+  console.log(globalState.cartItemPrices); // [12, 34, 56]
+  ...
+};
+
+export default connect(Checkout, {
+  name: 'checkout',
+  
+  globalState: {
+    cartItems: 'shoppingCart.items',
+    cartItemPrices: 'shoppingCart.items.*.price',
+  },
+  ...
+});
+```
+
+### stateKey (String)
+The `stateKey` is used as a property name when the related Redux state object is injected into the component props. The default value is 'state'.
+
+### actionsKey (String)
+The `actionsKey` is used as a property name when the action creator functions object is injected into the component props. The default value is 'actions'.
+
+### globalStateKey (String)
+The `globalStateKey` is used as a property name when other component states are injected into the component props. The default value is 'globalState'.
+
+### dispatchKey (String)
+The `dispatchKey` is used as a property name when the `dispatch` function is injected into the component props. The default value is 'dispatch'.
 
 &nbsp;
 &nbsp;

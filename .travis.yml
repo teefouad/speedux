@@ -1,10 +1,7 @@
 language: node_js
+
 node_js:
-  - "8.4"
+  - node
+
 script:
-  - npm run clean
-  - npm run build
-  - npm run test
-branches:
-  only:
-    - master
+  - npm run coverage -- --coverageReporters=text-lcov | ./node_modules/.bin/coveralls

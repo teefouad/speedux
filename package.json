@@ -1,22 +1,24 @@
 {
   "name": "speedux",
-  "version": "2.0.2",
-  "description": "An opinionated library that allows you to create actions and reducers for Redux, automatically. Speedux reduces the amount of code that needs to be written in a Redux application giving you peace of mind and more time to code the important stuff.",
+  "version": "3.0.0",
+  "description": "An opinionated state management library based on Redux.",
   "main": "lib/index.js",
   "scripts": {
-    "build": "npm run build:commonjs && npm run build:umd && npm run build:umd:min",
-    "build:commonjs": "cross-env BABEL_ENV=commonjs babel src --out-dir lib",
-    "build:umd": "cross-env BABEL_ENV=commonjs NODE_ENV=development webpack",
-    "build:umd:min": "cross-env BABEL_ENV=commonjs NODE_ENV=production webpack",
+    "build": "npm run clean && npm run build:commonjs && npm run build:umd && npm run build:umd:min",
+    "build:commonjs": "babel src --out-dir lib",
+    "build:umd": "cross-env FILE_NAME=speedux webpack",
+    "build:umd:min": "cross-env NODE_ENV=production npm run build:umd",
     "clean": "rimraf lib dist",
-    "lint": "eslint src test",
+    "lint": "eslint src --ext .js,.jsx",
+    "test": "jest tests",
+    "test:watch": "npm test -- --watch",
+    "coverage": "npm test -- --coverage",
     "posttest": "npm run lint",
-    "prepublish": "npm run clean && npm run test && npm run build",
-    "test": "cross-env NODE_ENV=test jest"
+    "prepublishOnly": "npm run test && npm run build"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/teefouad/speedux.git"
+    "url": "git+https://github.com/teefouad/speedux.git"
   },
   "files": [
     "lib",
@@ -40,32 +42,34 @@
     "url": "https://github.com/teefouad/speedux/issues"
   },
   "homepage": "https://github.com/teefouad/speedux#readme",
-  "dependencies": {
-    "babel-polyfill": "^6.26.0",
-    "react": "^16.4.1",
-    "react-redux": "^5.0.7",
-    "redux": "^4.0.0",
-    "redux-saga": "^0.16.0"
-  },
   "devDependencies": {
-    "babel-cli": "^6.26.0",
-    "babel-core": "^6.26.3",
-    "babel-eslint": "^8.2.2",
-    "babel-jest": "^22.4.1",
-    "babel-loader": "^7.1.5",
-    "babel-preset-es2015": "^6.24.1",
-    "babel-preset-react": "^6.24.1",
-    "babel-preset-stage-0": "^6.24.1",
+    "@babel/cli": "^7.2.3",
+    "@babel/core": "^7.3.4",
+    "@babel/plugin-proposal-class-properties": "^7.4.4",
+    "@babel/plugin-transform-runtime": "^7.4.3",
+    "@babel/preset-env": "^7.3.4",
+    "@babel/preset-react": "^7.7.0",
+    "babel-eslint": "^10.0.1",
+    "babel-jest": "^24.4.0",
+    "babel-loader": "^8.0.6",
+    "coveralls": "^3.0.3",
     "cross-env": "^5.2.0",
-    "eslint": "^4.18.0",
-    "eslint-config-airbnb": "^16.1.0",
-    "eslint-plugin-import": "^2.8.0",
-    "eslint-plugin-jsx-a11y": "^6.0.3",
-    "eslint-plugin-react": "^7.7.0",
-    "jest": "^22.4.0",
-    "react-test-renderer": "^16.2.0",
-    "redux-mock-store": "^1.5.1",
-    "rimraf": "^2.6.2",
-    "webpack": "^3.11.0"
+    "eslint": "^5.15.1",
+    "eslint-config-airbnb": "^17.1.0",
+    "eslint-plugin-import": "^2.16.0",
+    "eslint-plugin-jsx-a11y": "^6.2.1",
+    "eslint-plugin-react": "^7.12.4",
+    "jest": "^24.4.0",
+    "react-dom": "^16.12.0",
+    "react-test-renderer": "^16.12.0",
+    "uglifyjs-webpack-plugin": "^2.2.0",
+    "webpack": "^4.29.6",
+    "webpack-cli": "^3.2.3"
+  },
+  "dependencies": {
+    "react": "^16.12.0",
+    "react-redux": "^7.1.3",
+    "redux": "^4.0.4",
+    "redux-saga": "^1.1.3"
   }
 }

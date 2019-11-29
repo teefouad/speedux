@@ -3,7 +3,7 @@ import renderer from 'react-test-renderer';
 import getMockComponent from './common';
 import connect from '../src/connect';
 
-describe('store.js', () => {
+describe('connect.js', () => {
   xit('', () => {
 
   });

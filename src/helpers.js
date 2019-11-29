@@ -5,7 +5,7 @@
  */
 export const getArgNames = (func) => {
   // convert the function to a string and remove spaces
-  const str = func.toString().replace(/\s+/g, '');
+  const str = func.toString().replace(/[\s*]+/g, '');
 
   // `params` is a comma-separated string representing the
   // parameters that the function expects
@@ -39,11 +39,19 @@ export const getArgNames = (func) => {
       }
     }
   } else {
-    [params] = (str.match(/(.*?)(?==>)/) || []);
+    const [signature] = (str.match(/(.*?)(?=[=>{])/) || []);
+
+    if (/(.*?)\((.*?)\)/.test(signature)) {
+      // object shorthand function
+      params = signature.replace(/^(.*?)\(|\)$/g, '');
+    } else {
+      // single param arrow function
+      params = signature;
+    }
   }
 
   // clear destructuring and parentheses
-  params = params && params.replace(/[{}()\s]/g, '');
+  params = params && params.replace(/[{}()\s.]/g, '');
 
   // convert to an array of un-clean parameters
   params = (params && params.split(',')) || [];
@@ -152,7 +160,8 @@ export const findDirectPropInObject = (obj, prop, copyByRef = false, ...args) =>
     // of the given array
     if (type === 'array') {
       return result;
-    } else
+    }
+
     // reading a wildcard on an object would return the values
     // of the given object
     if (type === 'object') {
@@ -278,6 +287,40 @@ export const findPropInObject = (obj, pathStr, copyByRef = false, ...args) => {
 };
 
 /**
+ * Updates an object by merging a fragment object into it.
+ * @param   {Object} objA Object to update.
+ * @param   {Object} objB Fragment object.
+ * @return  {Object}      The updated object.
+ */
+export const mergeObjects = (objA, objB) => Object.keys(objB).reduce(
+  (prev, next) => findPropInObject(prev, next, false, objB[next]),
+  { ...objA },
+);
+
+/**
+ * Queries a state object for a specific value.
+ * @param   {String}    query   Query string.
+ * @param   {Object}    state   State object to query.
+ * @return  {Object}            The state object, part of it or a value in the state object.
+ */
+export const queryState = (query, state) => {
+  // handle query strings
+  if (getObjectType(query) === 'string') {
+    return findPropInObject(state, query);
+  }
+
+  // handle query objects
+  if (getObjectType(query) === 'object') {
+    return Object.keys(query).reduce((prev, next) => ({
+      ...prev,
+      [next]: findPropInObject(state, query[next]),
+    }), {});
+  }
+
+  return state;
+};
+
+/**
  * Converts any string to camel-case format.
  * @param   {String}    str           String to convert.
  * @return  {String}                  The formatted string.
@@ -292,7 +335,8 @@ export const toCamelCase = (str) => {
     const parts = cleanString.replace(/[\s_-]|[a-z](?=[A-Z])/g, w => (/[\s_-]/.test(w) ? ':' : `${w}:`)).split(':');
     const transformedParts = parts.map((w, i) => (i === 0 ? w.toLowerCase() : `${w[0].toUpperCase()}${w.slice(1).toLowerCase()}`));
     return transformedParts.join('');
-  } else
+  }
+
   // if it's already in camelcase, return it
   if (/([a-z][A-Z])+/.test(cleanString)) {
     return cleanString;

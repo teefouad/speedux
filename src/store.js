@@ -2,12 +2,11 @@
  * Dependency imports.
  */
 import {
-  createStore,
-  combineReducers,
+  createStore as createReduxStore,
   applyMiddleware,
   compose,
+  combineReducers,
 } from 'redux';
-
 import createSagaMiddleware from 'redux-saga';
 
 /**
@@ -16,115 +15,175 @@ import createSagaMiddleware from 'redux-saga';
 import * as helpers from './helpers';
 
 /**
- * Reference to hold the Redux store instance.
- * @type {Object}
+ * This is not the actual store object. This is a wrapper object
+ * that manages the Redux store instance. Use `store.getInstance()`
+ * to get a reference to the Redux store.
  */
-let storeInstance;
-
-/**
- * An array of getState calls that were executed during a state update.
- * Each callback function in this array will be invoked with the new
- * state once the state is updated and then the array will be emptied.
- * @type {Array}
- */
-let getStateCallbacks = [];
-
-/**
- * Creates the saga middleware function.
- * @type {Function}
- */
-export const sagaMiddleware = createSagaMiddleware();
-
-/**
- * Creates the saga store enhancer.
- * @type {Function}
- */
-export const sagaEnhancer = applyMiddleware(sagaMiddleware);
-
-/**
- * Creates a middleware function that is used to enable Redux devTools.
- * in the browser.
- * @type {Function}
- */
-export const devTools = compose(window.devToolsExtension ? window.devToolsExtension() : foo => foo);
-
-/**
- * This is not the actual store object. This is a wrapper object that manages
- * the Redux store instance. Use `StoreManager.getInstance()` to get a reference
- * to the Redux store.
- */
-export const StoreManager = {
+const store = {
   /**
    * An object that is used as a map to store references to registered
-   * reducers. This object is used by `getRootReducer` to create the
+   * reducers. This object is used by `getRootReducer()` to create the
    * root reducer for the store.
    * @type {Object}
    */
   reducers: {},
 
   /**
+   * An array that holds saga functions to be run
+   */
+  sagas: [],
+
+  /**
    * An array of middlewares to use when creating the store.
-   * Use `useMiddleware` method to add other middleware functions to this list.
+   * Use exported method `useMiddleware()` to add other middleware
+   * functions to this list.
    * @type {Array}
    */
-  middleWares: [sagaEnhancer, devTools],
+  middlewares: [],
 
   /**
-   * Registers a reducer function.
-   * @param  {String}   key       Reducer unique identifier key.
-   * @param  {Function} reducer   Reducer function.
+   * An object that is used to build the initial state tree for the
+   * entire app. Each call to `connect()` will add a new key to this
+   * object.
+   * @type {Object}
    */
-  addReducer(name, reducer) {
-    StoreManager.reducers[name] = reducer;
-    StoreManager.update();
+  combinedInitialState: {},
+
+  /**
+   * Creates a new Redux store instance and updates the reference.
+   */
+  create() {
+    if (this.storeInstance) return this.storeInstance;
+    return this.buildInstance();
   },
 
   /**
-   * Unregisters a reducer function. If you remove a reducer, you have to explicitly
-   * call StoreManager.update() afterwards.
-   * @param  {String}   key       Reducer unique identifier key.
+   * Builds a Redux store instance.
    */
-  removeReducer(name) {
-    delete StoreManager.reducers[name];
+  buildInstance() {
+    /* eslint-disable */
+    const devToolsExtension = (typeof window !== 'undefined' && window.__REDUX_DEVTOOLS_EXTENSION__)
+      ? window.__REDUX_DEVTOOLS_EXTENSION__()
+      : foo => foo;
+    /* eslint-enable */
+
+    this.sagaMiddleware = createSagaMiddleware();
+    this.sagaEnhancer = applyMiddleware(this.sagaMiddleware);
+    this.devTools = this.devTools || compose(devToolsExtension);
+
+    this.storeInstance = createReduxStore(
+      this.getRootReducer(),
+      compose(...this.middlewares, this.sagaEnhancer, this.devTools),
+    );
+
+    this.sagas.forEach(saga => this.sagaMiddleware.run(saga));
+
+    return this.storeInstance;
   },
 
   /**
-   * Unregisters all reducer functions. If you remove all reducers, you have to explicitly
-   * call StoreManager.update() afterwards.
-   */
-  removeAllReducers() {
-    Object.keys(StoreManager.reducers).forEach(name => StoreManager.removeReducer(name));
-  },
-
-  /**
-   * Combines all registered reducers and returns a single reducer function.
-   * @return {Function} The root reducer function.
+   * Returns the root reducer function.
    */
   getRootReducer() {
-    const reducers = { ...StoreManager.reducers };
+    if (this.rootReducer) return this.rootReducer;
+    return this.buildRootReducer();
+  },
 
-    if (Object.keys(reducers).length === 0 || process.env.NODE_ENV === 'test') {
+  /**
+   * Combines all registered reducers and returns a single reducer
+   * function.
+   */
+  buildRootReducer() {
+    const reducers = { ...this.reducers };
+
+    if (Object.keys(reducers).length === 0) {
       reducers.$_foo = (state = {}) => state; // default reducer
     }
 
-    const rootReducer = combineReducers(reducers);
+    const combinedReducers = combineReducers(reducers);
 
-    return (state, action) => {
-      // start updating the state
-      StoreManager.$updatingState = true;
-      // clear getState calls queue
-      getStateCallbacks = [];
+    this.rootReducer = (state = this.combinedInitialState, action = null) => {
+      // cache the state
+      this.cachedState = state;
 
       // get the new state object
-      const newState = rootReducer(state, action);
+      const newState = combinedReducers(state, action);
 
-      // invoke each getState call in the queue with the new state
-      StoreManager.$updatingState = false;
-      while (getStateCallbacks.length) getStateCallbacks.shift()(newState);
+      // update cached state
+      this.cachedState = newState;
 
       // return the new state
       return newState;
     };
+
+    return this.rootReducer;
+  },
+
+  /**
+   * Updates the root reducer of the store.
+   */
+  update() {
+    return this.storeInstance.replaceReducer(this.buildRootReducer());
+  },
+
+  /**
+   * Registers a reducer function.
+   * @param  {String}   key             Reducer unique identifier key
+   * @param  {Function} reducer         Reducer function
+   * @param  {Object}   initialState    Optional initial state for the reducer
+   */
+  useReducer(name, reducer, initialState) {
+    this.reducers[name] = reducer;
+    this.combinedInitialState[name] = initialState;
+  },
+
+  /**
+   * Unregisters all reducer functions.
+   */
+  resetReducers() {
+    this.reducers = {};
+    this.combinedInitialState = {};
+  },
+
+  /**
+   * Allows registering middleware functions such as Router and other middlewares.
+   * @param {Function} middleware Middleware function to use
+   */
+  useMiddleware(middleware) {
+    this.middlewares.unshift(applyMiddleware(middleware));
+  },
+
+  /**
+   * Removes all registered middlewares.
+   */
+  resetMiddlewares() {
+    this.middlewares = [];
+  },
+
+  /**
+   * Allows registering saga functions.
+   * @param {Function} saga Saga function to be run
+   */
+  useSaga(saga) {
+    this.sagas.push(saga);
+  },
+
+  /**
+   * Removes all registered sagas.
+   */
+  resetSagas() {
+    this.sagas = [];
+  },
+
+  /**
+   * Resets the store and deletes the instance.
+   */
+  reset() {
+    this.resetReducers();
+    this.resetMiddlewares();
+    this.resetSagas();
+    delete this.rootReducer;
+    delete this.storeInstance;
   },
 
   /**
@@ -136,92 +195,17 @@ export const StoreManager = {
    * @param   {String|Object}   query   A query string or a query object that represents
    *                                    part of the state object that needs to be fetched.
    *                                    This parameter is not required.
-   * @return  {Promise}                 A promise that eventually resolves with the state
-   *                                    object, part of it or a value in the state object.
    */
   getState(query) {
-    if (StoreManager.$updatingState === false) {
-      return Promise.resolve(StoreManager.queryState(query, storeInstance.getState()));
-    }
-
-    return new Promise((resolve) => {
-      getStateCallbacks.push((state) => {
-        resolve(StoreManager.queryState(query, state));
-      });
-    });
-  },
-
-  /**
-   * Queries a state object for a specific value.
-   * @param   {String}    query   Query string.
-   * @param   {Object}    state   State object to query.
-   * @return  {Object}            The state object, part of it or a value in the state object.
-   */
-  queryState(query, state) {
-    // handle query strings
-    if (helpers.getObjectType(query) === 'string') {
-      return helpers.findPropInObject(state, query);
-    }
-
-    // handle query objects
-    if (helpers.getObjectType(query) === 'object') {
-      return Object.keys(query).reduce((prev, next) => ({
-        ...prev,
-        [next]: helpers.findPropInObject(state, query[next]),
-      }), {});
-    }
-
-    return state;
+    return helpers.queryState(query, this.storeInstance.getState());
   },
 
   /**
    * Returns an reference to the Redux store instance.
-   * @return {Object} Reference to the store instance.
    */
   getInstance() {
-    if (!storeInstance) {
-      StoreManager.buildInstance();
-    }
-
-    return storeInstance;
-  },
-
-  /**
-   * Creates a new Redux store instance and updates the reference.
-   */
-  buildInstance() {
-    storeInstance = createStore(
-      StoreManager.getRootReducer(),
-      compose(...StoreManager.middleWares),
-    );
-  },
-
-  /**
-   * Updates the root reducer of the store. Call this method after adding or
-   * removing reducers.
-   */
-  update() {
-    return storeInstance.replaceReducer(StoreManager.getRootReducer());
-  },
-
-  /**
-   * Allows registering middleware functions such as Router and other middlewares.
-   * @param {Function} middleWare Middleware function to use
-   */
-  useMiddleware(middleWare) {
-    return StoreManager.middleWares.unshift(applyMiddleware(middleWare));
-  },
-
-  /**
-   * Runs a saga generator function.
-   * @param {Generator} saga      Saga to run.
-   */
-  runSaga(saga) {
-    sagaMiddleware.run(saga);
+    return this.storeInstance;
   },
 };
 
-/**
- * Default export.
- */
-export default StoreManager.getInstance();
+export default store;
