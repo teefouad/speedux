@@ -2,7 +2,7 @@
  * Dependency imports.
  */
 import React from 'react';
-import ReduxProvider from 'react-redux/lib/components/Provider';
+import { Provider as ReduxProvider } from 'react-redux';
 
 /**
  * Local imports.
@@ -13,6 +13,7 @@ import store from './store';
  * Re-exports.
  */
 export { default as connect } from './connect';
+export { default as makeHook } from './hook';
 export const useReducer = (...args) => store.useReducer(...args);
 export const useMiddleware = (...args) => store.useMiddleware(...args);
 

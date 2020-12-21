@@ -2,7 +2,7 @@
  * Dependency imports.
  */
 import { Component } from 'react';
-import reduxConnect from 'react-redux/lib/connect/connect';
+import { connect as reduxConnect } from 'react-redux';
 
 /**
  * Local imports.
@@ -96,7 +96,8 @@ const connect = (component, config) => {
   }
 
   if (connect.moduleNames[moduleConfig.name] === true) {
-    console.warn(`Duplicate name: ${moduleConfig.name}. ${ERRORS.DUPLICATE_NAME}`);
+    const { warn } = console;
+    warn(`Duplicate name: ${moduleConfig.name}. ${ERRORS.DUPLICATE_NAME}`);
   } else {
     connect.moduleNames[moduleConfig.name] = true;
   }
