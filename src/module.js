@@ -25,6 +25,7 @@ class Module {
     this.actionsKey = config.actionsKey || 'actions';
     this.dispatchKey = config.dispatchKey || 'dispatch';
     this.globalStateKey = config.globalStateKey || 'globalState';
+    this.initialState = config.initialState || config.state || {};
     this.actionCreators = {};
     this.actionToReducerMap = {};
     this.handlerToReducerMap = {};
@@ -36,57 +37,15 @@ class Module {
 
   build = () => {
     /* build action creators ---------- */
-    Object.entries(this.config.actions || {}).forEach(([name, callback]) => {
-      const camelCaseName = helpers.toCamelCase(name);
-      const actionName = helpers.toSnakeCase(camelCaseName).toUpperCase();
-      const actionType = `@@${this.name}/${actionName}`;
-      const argNames = helpers.getArgNames(callback);
-
-      if (callback.toString().includes('undefined.getState(')) {
-        throw new Error(`Action '${this.name}.${name}' cannot call 'this.getState()'. Try using a normal function instead of an arrow function.`);
-      }
-
-      this.actionCreators[camelCaseName] = (...args) => {
-        // build the payload object
-        const payload = argNames.reduce((prev, next, index) => ({
-          ...prev,
-          [next]: args[index],
-        }), {});
-
-        // then use it to build the action object
-        const actionObject = {
-          type: actionType,
-          payload,
-        };
-
-        return actionObject;
-      };
-
-      this.actionToReducerMap[actionType] = this.createSubReducer(actionType, callback, argNames, 'create');
-      this.sagas[`create:${actionType}`] = this.createSaga(actionType, 'create');
-    });
+    this.buildActionCreators(this.config.actions);
 
     /* build handlers ----------------- */
-    Object.entries(this.config.handlers || {}).forEach(([name, callback]) => {
-      let actionType = name;
-      const argNames = helpers.getArgNames(callback);
-
-      if (callback.toString().includes('undefined.getState(')) {
-        throw new Error(`Action '${this.name}.${name}' cannot call 'this.getState()'. Try using a normal function instead of an arrow function.`);
-      }
-
-      if (/^(.*?)\.(.*?)$/.test(actionType)) {
-        const [moduleName, camelCaseName] = actionType.split('.');
-        const actionName = helpers.toSnakeCase(camelCaseName).toUpperCase();
-        actionType = `@@${moduleName === 'this' ? this.name : moduleName}/${actionName}`;
-      }
-
-      this.handlerToReducerMap[actionType] = this.createSubReducer(actionType, callback, argNames, 'handle');
-      this.sagas[`handle:${actionType}`] = this.createSaga(actionType, 'handle');
-    });
+    this.buildHandlers(this.config.handlers);
 
     /* build reducer ------------------ */
-    this.reducer = (state = {}, action) => {
+    this.reducer = (prevState, action) => {
+      const state = prevState ?? this.initialState;
+
       // the action type might be in normal form, such as: '@@prefix/ACTION_NAME'
       // or it may contain a sub action type: '@@prefix/ACTION_NAME/SUB_ACTION_NAME'
       const actionType = action.type;
@@ -122,21 +81,10 @@ class Module {
     };
 
     /* map state to props ------------- */
-    this.mapStateToProps = (state) => {
-      const { [this.name]: ownState, ...otherStates } = state;
-
-      const globalState = Object
-        .entries(this.config.globalState || {})
-        .reduce((p, [name, query]) => ({
-          ...p,
-          [name]: helpers.queryState(query, query === true ? otherStates[name] : otherStates),
-        }), {});
-
-      return {
-        [this.stateKey]: ownState,
-        [this.globalStateKey]: globalState,
-      };
-    };
+    this.mapStateToProps = state => ({
+      [this.stateKey]: state[this.name],
+      [this.globalStateKey]: this.getGlobalState(this.config.globalState || {}),
+    });
 
     /* map dispatch to props ---------- */
     this.mapDispatchToProps = dispatchFunc => bindActionCreators(this.actionCreators, dispatchFunc);
@@ -150,10 +98,65 @@ class Module {
     });
   }
 
+  buildActionCreators = (actions = {}) => {
+    Object.entries(actions).forEach(([name, callback]) => {
+      const camelCaseName = helpers.toCamelCase(name);
+      const actionName = helpers.toSnakeCase(camelCaseName).toUpperCase();
+      const actionType = `@@${this.name}/${actionName}`;
+      const argNames = helpers.getArgNames(callback);
+
+      if (callback.toString().includes('undefined.getState(')) {
+        throw new Error(`Action '${this.name}.${name}' cannot call 'this.getState()'. Try using a normal function instead of an arrow function.`);
+      }
+
+      this.actionCreators[camelCaseName] = (...args) => {
+        // build the payload object
+        const payload = argNames.reduce((prev, next, index) => ({
+          ...prev,
+          [next]: args[index],
+        }), {});
+
+        // then use it to build the action object
+        const actionObject = {
+          type: actionType,
+          payload,
+        };
+
+        return actionObject;
+      };
+
+      this.actionToReducerMap[actionType] = this.createSubReducer(actionType, callback, argNames, 'create');
+      this.sagas[`create:${actionType}`] = this.createSaga(actionType, 'create');
+    });
+  };
+
+  buildHandlers = (handlers = {}) => {
+    Object.entries(handlers).forEach(([name, callback]) => {
+      let actionType = name;
+      const argNames = helpers.getArgNames(callback);
+
+      if (callback.toString().includes('undefined.getState(')) {
+        throw new Error(`Action '${this.name}.${name}' cannot call 'this.getState()'. Try using a normal function instead of an arrow function.`);
+      }
+
+      if (/^(.*?)\.(.*?)$/.test(actionType)) {
+        const [moduleName, camelCaseName] = actionType.split('.');
+        const actionName = helpers.toSnakeCase(camelCaseName).toUpperCase();
+        actionType = `@@${moduleName === 'this' ? this.name : moduleName}/${actionName}`;
+      }
+
+      this.handlerToReducerMap[actionType] = this.createSubReducer(actionType, callback, argNames, 'handle');
+      this.sagas[`handle:${actionType}`] = this.createSaga(actionType, 'handle');
+    });
+  };
+
   createSubReducer = (actionType, callback, argNames, mode) => (state = {}, action = null) => {
     const callbackResult = this.executeCallback(callback, action, argNames, mode);
     const callbackResultType = helpers.getObjectType(callbackResult);
-    const stateFragment = (callbackResultType === 'object' ? callbackResult : {});
+    let stateFragment = {};
+
+    if (callbackResultType === 'object') stateFragment = callbackResult;
+    if (callbackResultType === 'function') stateFragment = callbackResult(state);
 
     // the saga handler will be called right after the reducer so instead of the saga
     // handler executing the callback again, pass it the cached result
@@ -253,11 +256,23 @@ class Module {
 
   getState = query => helpers.queryState(query, this.cachedState)
 
-  getGlobalState = (query) => {
+  getGlobalState = (queries) => {
     const globalState = { ...store.cachedState };
     delete globalState[this.name];
-    return helpers.queryState(query, globalState);
-  }
+
+    if (!queries) return globalState;
+
+    if (helpers.getObjectType(queries) === 'string') {
+      return helpers.queryState(queries, globalState);
+    }
+
+    return Object
+      .entries(queries)
+      .reduce((p, [name, query]) => ({
+        ...p,
+        [name]: helpers.queryState(query, globalState),
+      }), {});
+  };
 
   getActionTypeMatchers = (actionType) => {
     const regex = /@@(.+?)\/(.+)/;

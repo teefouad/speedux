@@ -1,7 +1,8 @@
 /**
  * Dependency imports.
  */
-import { useSelector, useDispatch } from 'react-redux';
+import { useState as useReactState, useMemo, useRef } from 'react';
+import { useSelector, useDispatch as useReduxDispatch } from 'react-redux';
 
 /**
  * Local imports.
@@ -15,56 +16,73 @@ import * as helpers from './helpers';
  * Error messages map
  */
 export const ERRORS = {
-  INVALID_CONFIG: 'Configuration must be a valid object.',
-  MISSING_NAME: 'Property \'name\' is missing from the configuration. Name is required.',
+  INVALID_NAME: 'Name must be a string.',
+  MISSING_NAME: 'Name is required. Did you call `useRedux` without passing the name?',
   DUPLICATE_NAME: 'This name has already been used by another component, please use a different name.',
 };
 
-const moduleNames = {};
+const modulesRegistry = {};
 
-export default (config) => {
-  if (helpers.getObjectType(config) !== 'object') {
-    throw new Error(ERRORS.INVALID_CONFIG);
-  }
-
-  if (!config.name) {
+export default function useRedux(name) {
+  if (!name) {
     throw new Error(ERRORS.MISSING_NAME);
   }
 
-  if (moduleNames[config.name] === true) {
-    const { warn } = console;
-    warn(`Duplicate name: ${config.name}. ${ERRORS.DUPLICATE_NAME}`);
-  } else {
-    moduleNames[config.name] = true;
+  if (helpers.getObjectType(name) !== 'string') {
+    throw new Error(ERRORS.INVALID_NAME);
   }
 
-  const module = new Module(config);
-  const initialState = config.initialState || config.state || {};
+  const registeredModule = modulesRegistry[name];
 
-  store.useReducer(module.name, module.reducer, initialState);
+  const module = useMemo(() => {
+    const moduleInstance = new Module({ name });
+    modulesRegistry[name] = moduleInstance;
+    return moduleInstance;
+  }, [name]);
 
-  Object.values(module.sagas).forEach(saga => store.useSaga(saga));
+  if (registeredModule && registeredModule !== module) {
+    const { warn } = console;
+    warn(`Duplicate name: ${name}. ${ERRORS.DUPLICATE_NAME}`);
+  }
 
-  let shouldUpdateStore = true;
+  const updateStoreRef = useRef(true);
 
-  return () => {
-    if (shouldUpdateStore) {
+  const useState = initialState => useSelector((stateTree) => {
+    if (updateStoreRef.current) {
+      store.useReducer(module.name, module.reducer, initialState);
       store.update();
-      shouldUpdateStore = false;
+      updateStoreRef.current = false;
+      return initialState;
     }
 
-    const {
-      [module.stateKey]: state,
-      [module.globalStateKey]: globalState,
-    } = module.mapStateToProps(useSelector(stateTree => stateTree));
+    return stateTree[module.name];
+  });
 
-    const actions = module.mapDispatchToProps(useDispatch());
-
-    return {
-      state,
-      actions,
-      dispatch,
-      globalState,
-    };
+  const useActions = (actions) => {
+    useMemo(() => module.buildActionCreators(actions), [actions]);
+    return module.mapDispatchToProps(useReduxDispatch());
   };
-};
+
+  const useHandlers = (handlers) => {
+    useMemo(() => module.buildHandlers(handlers), [handlers]);
+  };
+
+  const useDispatch = () => dispatch;
+
+  const useGlobalState = (queries) => {
+    const [ready, setReady] = useReactState(false);
+    if (!ready) setTimeout(() => setReady(true), 0);
+    return useSelector(() => {
+      if (!ready) return null;
+      return module.getGlobalState(queries);
+    });
+  };
+
+  return {
+    useState,
+    useActions,
+    useHandlers,
+    useDispatch,
+    useGlobalState,
+  };
+}

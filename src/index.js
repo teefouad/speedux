@@ -13,7 +13,7 @@ import store from './store';
  * Re-exports.
  */
 export { default as connect } from './connect';
-export { default as makeHook } from './hook';
+export { default as useRedux } from './hook';
 export const useReducer = (...args) => store.useReducer(...args);
 export const useMiddleware = (...args) => store.useMiddleware(...args);
 

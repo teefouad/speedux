@@ -23,6 +23,7 @@ An opinionated library for managing state in React apps, based on Redux.
 - [Middlewares](#middlewares)  
 - [API](#api)  
 - [The Configuration Object](#the-configuration-object)  
+- [Hooks](#hooks)  
 - [License](#license)
 
 &nbsp;
@@ -53,7 +54,7 @@ yarn add speedux
 
 # Quick Tutorial
 
-Using Speedux is pretty easy and straight-forward. First step is to wrap your application in a `Provider` component and the second step is to use the [`connect`](#connectcomponent-configuration) function to connect your components to the store. Normal Redux stuff but with less code.
+Using Speedux is pretty easy and straight-forward. First step is to wrap your application in a `Provider` component and the second step is to use the [`useRedux`](#hooks) hook or the [`connect`](#connectcomponent-configuration) function to connect your components to the store. Normal Redux stuff but with less code.
 
 To understand how it works, let's take an example of a very simple counter app that displays three buttons. One button increases the count on click, another button decreases the count and a third button would reset the count.
 
@@ -112,15 +113,15 @@ export default connect(Counter, {
   state: { count: 0 },
   
   actions: {
-    increaseCount() {
-      return { count: this.getState('count') + 1 };
-    },
-    decreaseCount() {
-      return { count: this.getState('count') - 1 };
-    },
-    resetCount() {
-      return { count: 0 };
-    },
+    increaseCount: () => (currentState) => ({
+      count: currentState.count + 1,
+    }),
+    decreaseCount: () => (currentState) => ({
+      count: currentState.count - 1,
+    }),
+    resetCount: () => ({
+      count: 0,
+    }),
   },
 });
 ```
@@ -179,7 +180,7 @@ const config = {
 
 # Handling Errors
 
-To handle errors in an asyncronous action, you can check if the resolved response is an instance of `Error`:
+To handle errors in an asyncronous action, you can use `.catch()` or you can check if the resolved response is an instance of `Error`:
 
 ```jsx
 const config = {
@@ -192,10 +193,33 @@ const config = {
   },
 
   actions: {
+    /* Handle errors using `.catch()` */
     * fetchData() {
       // Yield an object to update the state and indicate that
       // the data is being loaded. You can use `props.state.loading`
       // to display a spinner or something similar.
+      yield { loading: true };
+      
+      // Yield a promise to fetch the data
+      const response = yield fetch('/api/posts').catch(e => {
+        console.log('Failed to fetch data');
+
+        // optionally return a fallback value
+        return { failed: true, posts: [] };
+      });
+      
+      // Handle loading errors
+      if (response.failed === true) {
+        ...
+      } else {
+        ...
+      }
+    },
+
+    /* Handle errors using `instanceof` */
+    * fetchOtherData() {
+      // Yield an object to update the state and indicate that
+      // the data is being loaded.
       yield { loading: true };
       
       // Yield a promise to fetch the data
@@ -822,6 +846,38 @@ The `globalStateKey` is used as a property name when other component states are 
 
 ### dispatchKey (String)
 The `dispatchKey` is used as a property name when the `dispatch` function is injected into the component props. The default value is 'dispatch'.
+
+&nbsp;
+&nbsp;
+
+# Hooks
+
+React's [hooks](https://reactjs.org/docs/hooks-intro.html) let you use state, execute side effects and use other React features without writing a class.
+
+Speedux provides a set of hook APIs as an alternative to the existing [`connect()`](#connectcomponent-configuration) Higher Order Component. These APIs allow you to subscribe to the Redux store, handle and dispatch actions, without having to wrap your components in [`connect()`](#connectcomponent-configuration).
+
+Here's a quick example to demonstrate how to use them. First, you need to import `useRedux` hook then use it to get access to the other hooks. Remember that the [name](#name-string) you pass to `useRedux` hook must be unique to that component.
+
+```jsx
+import React from 'react';
+import { useRedux } from 'speedux';
+
+export default () => {
+  const {
+    useState,
+    useActions,
+    useHandlers,
+    useDispatch,
+    useGlobalState,
+  } = useRedux('counter');
+
+  return (
+    <div>
+      ...
+    </div>
+  )
+}
+```
 
 &nbsp;
 &nbsp;
