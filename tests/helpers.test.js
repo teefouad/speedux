@@ -2476,6 +2476,77 @@ describe('deepCopy', () => {
   });
 });
 
+describe('deepCompare', () => {
+  const { deepCompare } = helpers;
+
+  it('should be able to compare numbers', () => {
+    expect(deepCompare(1, 1)).toBe(true);
+    expect(deepCompare(1, 2)).toBe(false);
+  });
+
+  it('should be able to compare strings', () => {
+    expect(deepCompare('foo', 'foo')).toBe(true);
+    expect(deepCompare('0', '1')).toBe(false);
+  });
+
+  it('should be able to compare booleans', () => {
+    expect(deepCompare(true, true)).toBe(true);
+    expect(deepCompare(false, false)).toBe(true);
+    expect(deepCompare(true, false)).toBe(false);
+  });
+
+  it('should be able to compare objects', () => {
+    expect(deepCompare({}, {})).toBe(true);
+    expect(deepCompare({ foo: 1 }, { foo: 1 })).toBe(true);
+    expect(deepCompare({ foo: {} }, { foo: {} })).toBe(true);
+    expect(deepCompare({ foo: { baz: true } }, { foo: { baz: true} })).toBe(true);
+    expect(deepCompare({ foo: 1 }, { foo: 2 })).toBe(false);
+    expect(deepCompare({ baz: 1 }, { foo: 1 })).toBe(false);
+    expect(deepCompare({ foo: { baz: true } }, { foo: { baz: false} })).toBe(false);
+    expect(deepCompare({ foo: () => ({}) }, { foo: () => ({}) })).toBe(true);
+    expect(deepCompare({ foo: () => ({}) }, { foo: () => ({ x: 10 }) })).toBe(false);
+  });
+
+  it('should be able to compare arrays', () => {
+    expect(deepCompare([], [])).toBe(true);
+    expect(deepCompare([1], [1])).toBe(true);
+    expect(deepCompare(['1'], ['1'])).toBe(true);
+    expect(deepCompare([1], ['1'])).toBe(false);
+    expect(deepCompare([1, 2, 4], [1, 2, 4])).toBe(true);
+    expect(deepCompare([{}, { foo: 2 }, [1, 4]], [{}, { foo: 2 }, [1, 4]])).toBe(true);
+    expect(deepCompare([{}, { foo: 2 }, [1, 4]], [{}, { foo: 2 }, [1, 3]])).toBe(false);
+  });
+
+  it('should be able to compare functions', () => {
+    expect(deepCompare(() => 0, () => 0)).toBe(true);
+    expect(deepCompare(() => 0, () => 1)).toBe(false);
+    expect(deepCompare((x) => x, (x) => x)).toBe(true);
+    expect(deepCompare((x) => 0, (y) => 0)).toBe(false);
+    expect(deepCompare(function() {}, function() {})).toBe(true);
+    expect(deepCompare(function foo() {}, function foo() {})).toBe(true);
+    expect(deepCompare(function foo() {}, function baz() {})).toBe(false);
+    expect(deepCompare(function foo() { return 1; }, function baz() { return 0; })).toBe(false);
+  });
+
+  it('should be able to compare falsy values', () => {
+    expect(deepCompare(0, 0)).toBe(true);
+    expect(deepCompare(null, null)).toBe(true);
+    expect(deepCompare(undefined, undefined)).toBe(true);
+    expect(deepCompare(undefined, 0)).toBe(false);
+    expect(deepCompare(null, 0)).toBe(false);
+    expect(deepCompare(null, undefined)).toBe(false);
+  });
+
+  it('should be able to compare mixed values', () => {
+    expect(deepCompare(0, false)).toBe(false);
+    expect(deepCompare(1, true)).toBe(false);
+    expect(deepCompare(1, '1')).toBe(false);
+    expect(deepCompare(1, [])).toBe(false);
+    expect(deepCompare({}, [])).toBe(false);
+    expect(deepCompare({ 0: 'foo' }, ['foo'])).toBe(false);
+  });
+});
+
 describe('getComponentName', () => {
   const { getComponentName } = helpers;
 

@@ -30,10 +30,11 @@ function dispatch(...args) {
     }
 
     // set the payload
-    if (helpers.getObjectType(args[1]) === 'object') {
-      action.payload = { ...args[1] };
-    } else {
-      action.payload = {};
+    action.payload = {};
+
+    // set the args
+    if (args.length > 1) {
+      action.args = args.slice(1);
     }
   }
 

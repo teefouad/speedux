@@ -8,6 +8,7 @@ import {
   combineReducers,
 } from 'redux';
 import createSagaMiddleware from 'redux-saga';
+import { all, call, takeEvery } from 'redux-saga/effects';
 
 /**
  * Local imports.
@@ -29,9 +30,9 @@ const store = {
   reducers: {},
 
   /**
-   * An array that holds saga functions to be run
+   * An object that holds saga functions to be run
    */
-  sagas: [],
+  sagas: {},
 
   /**
    * An array of middlewares to use when creating the store.
@@ -76,7 +77,22 @@ const store = {
       compose(...this.middlewares, this.sagaEnhancer, this.devTools),
     );
 
-    this.sagas.forEach(saga => this.sagaMiddleware.run(saga));
+    function* rootSaga(action) {
+      const filteredSagas = Object.keys(store.sagas)
+        .filter((key) => {
+          const actionType = key.replace(/^(create:|handle:)/, '');
+          return actionType === action.type;
+        })
+        .map(key => call(store.sagas[key], action));
+
+      yield all(filteredSagas);
+    }
+
+    function* rootSagaWorker() {
+      yield takeEvery('*', rootSaga);
+    }
+
+    this.sagaMiddleware.run(rootSagaWorker);
 
     return this.storeInstance;
   },
@@ -162,17 +178,26 @@ const store = {
 
   /**
    * Allows registering saga functions.
-   * @param {Function} saga Saga function to be run
+   * @param {String}    actionType  Action type to assign the saga to
+   * @param {Function}  saga        Saga function to be run
    */
-  useSaga(saga) {
-    this.sagas.push(saga);
+  useSaga(actionType, saga) {
+    this.sagas[actionType] = saga;
+  },
+
+  /**
+   * Registers a list of saga functions.
+   * @param {Object} sagas A list of saga functions to be run
+   */
+  useSagas(sagas) {
+    Object.keys(sagas).forEach(actionType => this.useSaga(actionType, sagas[actionType]));
   },
 
   /**
    * Removes all registered sagas.
    */
   resetSagas() {
-    this.sagas = [];
+    this.sagas = {};
   },
 
   /**
@@ -184,6 +209,7 @@ const store = {
     this.resetSagas();
     delete this.rootReducer;
     delete this.storeInstance;
+    delete this.registeredNames;
   },
 
   /**
@@ -205,6 +231,23 @@ const store = {
    */
   getInstance() {
     return this.storeInstance;
+  },
+
+  /**
+   * Registers a module name. The registered name must be unique for each component.
+   * @param {String} name Name to register
+   */
+  registerName(name) {
+    if (typeof this.registeredNames === 'undefined') {
+      this.registeredNames = {};
+    }
+
+    if (this.registeredNames[name] === true) {
+      const { warn } = console;
+      warn(`Duplicate name: ${name}. This name has already been used to connect another component, please use a different name.`);
+    } else {
+      store.registeredNames[name] = true;
+    }
   },
 };
 

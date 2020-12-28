@@ -1,7 +1,7 @@
 /**
  * Dependency imports.
  */
-import { useState as useReactState, useMemo, useRef } from 'react';
+import { useState as useReactState } from 'react';
 import { useSelector, useDispatch as useReduxDispatch } from 'react-redux';
 
 /**
@@ -16,14 +16,25 @@ import * as helpers from './helpers';
  * Error messages map
  */
 export const ERRORS = {
+  MISSING_NAME: 'Function `createHooks` expects the name string as a first parameter.',
   INVALID_NAME: 'Name must be a string.',
-  MISSING_NAME: 'Name is required. Did you call `useRedux` without passing the name?',
-  DUPLICATE_NAME: 'This name has already been used by another component, please use a different name.',
+  INVALID_CONFIG: 'Configuration must be a valid object.',
 };
 
-const modulesRegistry = {};
+export default (arg = {}) => {
+  let { name } = arg;
+  let config = {};
 
-export default function useRedux(name) {
+  if (helpers.getObjectType(arg) === 'string') {
+    name = arg;
+  } else {
+    config = arg;
+  }
+
+  if (helpers.getObjectType(config) !== 'object') {
+    throw new Error(ERRORS.INVALID_CONFIG);
+  }
+
   if (!name) {
     throw new Error(ERRORS.MISSING_NAME);
   }
@@ -32,39 +43,36 @@ export default function useRedux(name) {
     throw new Error(ERRORS.INVALID_NAME);
   }
 
-  const registeredModule = modulesRegistry[name];
+  const module = new Module({ name, ...config });
 
-  const module = useMemo(() => {
-    const moduleInstance = new Module({ name });
-    modulesRegistry[name] = moduleInstance;
-    return moduleInstance;
-  }, [name]);
+  store.registerName(name);
+  store.useReducer(module.name, module.reducer, config.initialState || config.state || {});
+  store.useSagas(module.sagas);
 
-  if (registeredModule && registeredModule !== module) {
-    const { warn } = console;
-    warn(`Duplicate name: ${name}. ${ERRORS.DUPLICATE_NAME}`);
-  }
+  const useState = (state) => {
+    if (state) store.useReducer(module.name, module.reducer, state);
+    return useSelector(stateTree => stateTree[module.name]);
+  };
 
-  const updateStoreRef = useRef(true);
-
-  const useState = initialState => useSelector((stateTree) => {
-    if (updateStoreRef.current) {
-      store.useReducer(module.name, module.reducer, initialState);
-      store.update();
-      updateStoreRef.current = false;
-      return initialState;
+  let actionsRef = config.actions;
+  const useActions = (actions) => {
+    if (actions && !helpers.deepCompare(actions, actionsRef)) {
+      module.buildActionCreators(actions);
+      store.sagas = [];
+      store.useSagas(module.sagas);
+      actionsRef = actions;
     }
 
-    return stateTree[module.name];
-  });
-
-  const useActions = (actions) => {
-    useMemo(() => module.buildActionCreators(actions), [actions]);
     return module.mapDispatchToProps(useReduxDispatch());
   };
 
-  const useHandlers = (handlers) => {
-    useMemo(() => module.buildHandlers(handlers), [handlers]);
+  let handlersRef = config.handlers;
+  const useHandlers = (handlers = {}) => {
+    if (handlers && !helpers.deepCompare(handlers, handlersRef)) {
+      module.buildHandlers(handlers);
+      store.useSagas(module.sagas);
+      handlersRef = handlers;
+    }
   };
 
   const useDispatch = () => dispatch;
@@ -74,7 +82,7 @@ export default function useRedux(name) {
     if (!ready) setTimeout(() => setReady(true), 0);
     return useSelector(() => {
       if (!ready) return null;
-      return module.getGlobalState(queries);
+      return module.getGlobalState(queries ?? config.globalState);
     });
   };
 
@@ -85,4 +93,4 @@ export default function useRedux(name) {
     useDispatch,
     useGlobalState,
   };
-}
+};

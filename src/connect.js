@@ -19,7 +19,6 @@ export const ERRORS = {
   INVALID_COMPONENT: 'Expected the first parameter to be a pure function or a valid React component class.',
   INVALID_CONFIG: 'Configuration must be a valid object.',
   MISSING_NAME: 'Property \'name\' is missing from the configuration. Name is required.',
-  DUPLICATE_NAME: 'This name has already been used by another component, please use a different name.',
 };
 
 /**
@@ -91,21 +90,8 @@ const connect = (component, config) => {
     throw new Error(ERRORS.MISSING_NAME);
   }
 
-  if (typeof connect.moduleNames === 'undefined') {
-    connect.moduleNames = {};
-  }
-
-  if (connect.moduleNames[moduleConfig.name] === true) {
-    const { warn } = console;
-    warn(`Duplicate name: ${moduleConfig.name}. ${ERRORS.DUPLICATE_NAME}`);
-  } else {
-    connect.moduleNames[moduleConfig.name] = true;
-  }
-
   const module = new Module(moduleConfig);
   const initialState = moduleConfig.initialState || moduleConfig.state || {};
-
-  store.useReducer(module.name, module.reducer, initialState);
 
   const ConnectedComponent = reduxConnect(
     module.mapStateToProps,
@@ -113,7 +99,9 @@ const connect = (component, config) => {
     module.combineProps,
   )(component);
 
-  Object.values(module.sagas).forEach(saga => store.useSaga(saga));
+  store.registerName(moduleConfig.name);
+  store.useReducer(module.name, module.reducer, initialState);
+  store.useSagas(module.sagas);
 
   return ConnectedComponent;
 };

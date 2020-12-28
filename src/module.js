@@ -2,11 +2,7 @@
  * Dependency imports.
  */
 import { bindActionCreators } from 'redux';
-import {
-  takeEvery,
-  put,
-  call,
-} from 'redux-saga/effects';
+import { call, put } from 'redux-saga/effects';
 
 /**
  * Local imports.
@@ -15,7 +11,10 @@ import store from './store';
 import dispatch from './dispatch';
 import * as helpers from './helpers';
 
-const META_SYMBOL = Symbol('@@speedux/META');
+/**
+ * Meta symbol
+ */
+export const META_SYMBOL = Symbol('@@speedux/META');
 
 class Module {
   constructor(config) {
@@ -30,7 +29,6 @@ class Module {
     this.actionToReducerMap = {};
     this.handlerToReducerMap = {};
     this.sagas = {};
-    this.workerSagas = {};
     this.reducer = state => state;
     this.build();
   }
@@ -109,21 +107,11 @@ class Module {
         throw new Error(`Action '${this.name}.${name}' cannot call 'this.getState()'. Try using a normal function instead of an arrow function.`);
       }
 
-      this.actionCreators[camelCaseName] = (...args) => {
-        // build the payload object
-        const payload = argNames.reduce((prev, next, index) => ({
-          ...prev,
-          [next]: args[index],
-        }), {});
-
-        // then use it to build the action object
-        const actionObject = {
-          type: actionType,
-          payload,
-        };
-
-        return actionObject;
-      };
+      this.actionCreators[camelCaseName] = (...args) => ({
+        type: actionType,
+        payload: {},
+        args,
+      });
 
       this.actionToReducerMap[actionType] = this.createSubReducer(actionType, callback, argNames, 'create');
       this.sagas[`create:${actionType}`] = this.createSaga(actionType, 'create');
@@ -140,9 +128,10 @@ class Module {
       }
 
       if (/^(.*?)\.(.*?)$/.test(actionType)) {
-        const [moduleName, camelCaseName] = actionType.split('.');
+        const [moduleName, camelCaseName, subAction] = actionType.split('.');
         const actionName = helpers.toSnakeCase(camelCaseName).toUpperCase();
-        actionType = `@@${moduleName === 'this' ? this.name : moduleName}/${actionName}`;
+        const subActionName = subAction ? `/${subAction.toUpperCase()}` : '';
+        actionType = `@@${moduleName === 'this' ? this.name : moduleName}/${actionName}${subActionName}`;
       }
 
       this.handlerToReducerMap[actionType] = this.createSubReducer(actionType, callback, argNames, 'handle');
@@ -166,80 +155,91 @@ class Module {
     return helpers.mergeObjects(state, stateFragment);
   };
 
-  createSaga = (actionType, mode) => function* saga() {
-    this.workerSagas[`${mode}:${actionType}`] = function* workerSaga(action) {
-      const result = this.cachedCallbackResult && this.cachedCallbackResult[`${mode}:${actionType}`];
+  createSaga = (actionType, mode) => function* saga(action) {
+    const result = this.cachedCallbackResult && this.cachedCallbackResult[`${mode}:${actionType}`];
 
-      // check if the callback return value is an iterable (usually a generator function)
-      // if it is an iterable then consume it
-      if (result && typeof result[Symbol.iterator] === 'function') {
-        // `data` will be assigned to each `next()` call
-        let data;
-        // `isDone` will be true when `next()` returns done as true
-        let isDone = false;
-        // the while loop will break after a maximum of 1000 calls
-        let breakAfter = 1000;
+    // check if the callback return value is an iterable (usually a generator function)
+    // if it is an iterable then consume it
+    if (result && typeof result[Symbol.iterator] === 'function') {
+      // `data` will be assigned to each `next()` call
+      let data;
+      // `isDone` will be true when `next()` returns done as true
+      let isDone = false;
+      // the while loop will break after a maximum of 1000 calls
+      let breakAfter = 1000;
 
-        while (!isDone) {
-          this.cachedState = store.getState()[this.name];
+      while (!isDone) {
+        this.cachedState = store.getState()[this.name];
 
-          const next = result.next(data);
-          const nextResult = next.value;
+        const next = result.next(data);
+        let nextResult = next.value;
 
-          isDone = next.done;
+        isDone = next.done;
 
-          // if the yielded value is a Promise, resolve it then continue
-          if (nextResult instanceof Promise) {
-            let error = false;
-
-            data = yield call(() => nextResult.catch((e) => {
-              error = e;
-              return Promise.resolve(e);
-            }));
-
-            if (error) {
-              yield put({
-                type: `${action.type}/ERROR`,
-                message: error.message,
-              });
-            }
-          } else
-          // if the yielded value is an object, use it to update the state
-          if (helpers.getObjectType(nextResult) === 'object') {
-            yield put({
-              type: `${action.type}/UPDATE`,
-              payload: nextResult,
-              get [META_SYMBOL]() {
-                return {
-                  mode,
-                  async: true,
-                };
-              },
-            });
-          }
-
-          breakAfter -= 1;
-
-          // safety break
-          if (breakAfter === 0) {
-            throw new Error('An async action or handler yielded more than 1000 values.');
-          }
+        if (Array.isArray(nextResult)) {
+          nextResult = Promise.all(nextResult);
         }
 
-        // indicate that the async action has completed by dispatching
-        // a COMPLETE sub action
-        yield put({
-          type: `${action.type}/COMPLETE`,
-        });
-      }
-    }.bind(this);
+        // if the yielded value is a Promise, resolve it then continue
+        if (nextResult instanceof Promise) {
+          let error = false;
 
-    yield takeEvery(actionType, this.workerSagas[`${mode}:${actionType}`]);
+          data = yield call(() => nextResult.catch((e) => {
+            error = e;
+            return Promise.resolve(e);
+          }));
+
+          if (error) {
+            yield put({
+              type: `${action.type}/ERROR`,
+              message: error.message,
+            });
+          }
+        } else
+        // if the yielded value is an object, use it to update the state
+        if (['object', 'function'].includes(helpers.getObjectType(nextResult))) {
+          let payload = nextResult;
+
+          if (helpers.getObjectType(nextResult) === 'function') {
+            payload = nextResult(this.cachedState);
+          }
+
+          yield put({
+            type: `${action.type}/UPDATE`,
+            payload,
+            get [META_SYMBOL]() {
+              return {
+                mode,
+                async: true,
+              };
+            },
+          });
+        }
+
+        breakAfter -= 1;
+
+        // safety break
+        if (breakAfter === 0) {
+          throw new Error('An async action or handler yielded more than 1000 values.');
+        }
+      }
+
+      // indicate that the async action has completed by dispatching
+      // a COMPLETE sub action
+      yield put({
+        type: `${action.type}/COMPLETE`,
+      });
+    }
   }.bind(this);
 
   executeCallback = (callback, action, argNames, mode) => {
     const context = this.getCallbackContext();
-    const callbackArgs = mode === 'create' ? argNames.map(arg => action.payload[arg]) : [action];
+    let callbackArgs = [action];
+
+    if (mode === 'create') {
+      callbackArgs = action.args ? action.args : argNames.map(arg => action.payload[arg]);
+    }
+
     return callback.apply(context, callbackArgs);
   }
 

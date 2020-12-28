@@ -1,11 +1,12 @@
 # Speedux
 
-[![npm version](https://img.shields.io/npm/v/speedux.svg?style=flat-square)](https://www.npmjs.com/package/speedux)
-[![License](https://img.shields.io/npm/l/speedux.svg)](https://www.npmjs.com/package/speedux)
-[![npm downloads](https://img.shields.io/npm/dm/speedux.svg?style=flat-square)](https://www.npmjs.com/package/speedux)
-[![build status](https://img.shields.io/travis/teefouad/speedux/master.svg?style=flat-square)](https://travis-ci.org/teefouad/speedux) 
+[![Version](https://img.shields.io/npm/v/speedux.svg?style=flat-square)](https://www.npmjs.com/package/speedux)
+[![License](https://img.shields.io/npm/l/speedux.svg?style=flat-square)](https://www.npmjs.com/package/speedux)
+[![Downloads](https://img.shields.io/npm/dm/speedux.svg?style=flat-square)](https://www.npmjs.com/package/speedux)
+[![Build Status](https://img.shields.io/travis/teefouad/speedux/master.svg?style=flat-square)](https://travis-ci.org/teefouad/speedux) 
+![Coveralls GitHub](https://img.shields.io/coveralls/github/teefouad/speedux.svg)
 
-An opinionated library for managing state in React apps, based on Redux.
+An opinionated library for managing state in React apps, based on Redux but much easier.
 
 &nbsp;
 &nbsp;
@@ -54,7 +55,9 @@ yarn add speedux
 
 # Quick Tutorial
 
-Using Speedux is pretty easy and straight-forward. First step is to wrap your application in a `Provider` component and the second step is to use the [`useRedux`](#hooks) hook or the [`connect`](#connectcomponent-configuration) function to connect your components to the store. Normal Redux stuff but with less code.
+Using Speedux is pretty easy and straight-forward. First step is to wrap your application in a `Provider` component and the second step is to use the [`connect`](#connectcomponent-configuration) function to connect your components to the store. Normal Redux stuff but with less code.
+
+You can also use [`createHooks`](#hooks) if you prefer to use React [hooks](https://reactjs.org/docs/hooks-intro.html).
 
 To understand how it works, let's take an example of a very simple counter app that displays three buttons. One button increases the count on click, another button decreases the count and a third button would reset the count.
 
@@ -81,9 +84,10 @@ That's pretty much all you need to do here.
 
 ### 2. Connect your component
 
-Next step will be inside your component file. Import the [`connect`](#connectcomponent-configuration) function from Speedux and pass it two parameters, the first parameter is your component definition and the second parameter is a [configuration object](#the-configuration-object) that defines the initial state for your connected component and all the logic required to update it.
-
 We want the `Counter` component state to contain a `count` property with an initial value of zero. To update the `count` property, we will use three actions: `increaseCount`, `decreaseCount` and `resetCount`.
+#### Connect using `connect()`
+
+Import the [`connect`](#connectcomponent-configuration) function from Speedux and pass it two parameters, the first parameter is your component definition and the second parameter is a [configuration object](#the-configuration-object) that defines the initial state for your connected component and all the logic required to update it.
 
 ```jsx
 import React from 'react';
@@ -126,6 +130,52 @@ export default connect(Counter, {
 });
 ```
 
+#### Connect using hooks
+
+Import the [`createHooks`](#hooks) function from Speedux and pass it a string as a single parameter. This function returns a set of React hooks that you can use to read and manipulate the global state of the component.
+
+```jsx
+import React from 'react';
+import { createHooks } from 'speedux'; 
+
+const { useState, useActions } = createHooks('counter');
+
+const Counter = () => {
+  const state = useState({ count: 0 });
+  const actions = useActions({
+    increaseCount: () => (currentState) => ({
+      count: currentState.count + 1,
+    }),
+    decreaseCount: () => (currentState) => ({
+      count: currentState.count - 1,
+    }),
+    resetCount: () => ({
+      count: 0,
+    }),
+  });
+  
+  return (
+    <div>
+      <h1>Count is: { state.count }</h1>
+
+      <button onClick={actions.increaseCount}>
+        Increase count
+      </button>
+
+      <button onClick={actions.decreaseCount}>
+        Decrease count
+      </button>
+
+      <button onClick={actions.resetCount}>
+        Reset count
+      </button>
+    </div>
+  );
+};
+
+export default Counter;
+```
+
 That's it! You have a fully working counter component that is connected to the Redux store.
 
 The [`connect`](#connectcomponent-configuration) function automatically injected the `state` and `actions` props into the component props.
@@ -141,7 +191,9 @@ In a real world application, you might need to fetch data from a remote source a
 
 Whenever your generator function yields an object, that object will be used to [update the component state](#updating-the-state) in the Redux store. If your generator function yields a Promise object, the function execution will pause until that promise is resolved and the result will be passed to the generator function on the next call.
 
- Here is an example:
+You can also return an array of Promises if you want to execute multiple requests at the same time.
+
+Here is an example:
 
 ```jsx
 const config = {
@@ -204,7 +256,7 @@ const config = {
       const response = yield fetch('/api/posts').catch(e => {
         console.log('Failed to fetch data');
 
-        // optionally return a fallback value
+        // Optionally return a fallback value
         return { failed: true, posts: [] };
       });
       
@@ -313,26 +365,21 @@ import React from 'react';
 import { connect } from 'speedux';
 
 const MyComponent = ({ dispatch }) => {
-  // dispatches an action with type 'someAction' and an empty object
-  // as the payload
-  function onClickButtonA() {
-    dispatch('someAction');
-  }
-  
-  // dispatches an action with type 'something' with the specified
+  // Dispatches an action with type 'something' with the specified
   // object as the payload
-  function onClickButtonB() {
-    dispatch('someAction', { value: 'abc' });
+  function onClickButton() {
+    dispatch({
+      type: 'someAction',
+      payload: {
+        value: 'abc',
+      },
+    });
   }
   
   return (
     <div>
-      <button onClick={onClickButtonA}>
-        Button A
-      </button>
-
-      <button onClick={onClickButtonB}>
-        Button B
+      <button onClick={onClickButton}>
+        Dispatch an action
       </button>
     </div>
   );
@@ -366,7 +413,7 @@ And another component `Baz` that needs to trigger the `setUserStatus` action whi
 
 const Baz = ({ dispatch }) => {
   function setStatus(status) {
-    dispatch('userProfile.setUserStatus', { userStatus: status });
+    dispatch('userProfile.setUserStatus', status);
   }
   
   return (
@@ -384,8 +431,6 @@ const Baz = ({ dispatch }) => {
 
 export default connect(Baz, {...})
 ```
-
-Note that the payload object keys must match the argument names of the action function that was defined in the configuration object.
 
 &nbsp;
 &nbsp;
@@ -686,62 +731,6 @@ See [Dispatching Actions](#dispatching-actions) for an example.
 
 
 &nbsp;
-
-
-### getState(query)
-
-This method is only available in the context of [action](#actions-object) and [handler](#handlers-object) functions and returns the Redux state object of the connected component or part of it based on a given query.
-
-If the query parameter is in dot notation as a string, it will return the resolved value of the given key path. If the query is an object, it will return an object that has the same structure but contains the resolved values. If the query parameter is not provided, the complete state object will be returned.
-
-| Parameter | Type | Description |
-| :----- | :----- | :----- |
-| query | String \| Object | A query string or a query object that represents part of the state object that needs to be fetched. This parameter is not required. |
-
-##### Example:
-```javascript
-export default connect(MyComponent, {
-  name: 'foo',
-
-  state: {
-    count: 0,
-    data: {
-      items: [
-        { title: 'Item one' },
-        { title: 'Item two' },
-        { title: 'Item three' },
-      ],
-      atts: {
-        tags: [ 'js', 'react', 'redux' ],
-      }
-    },
-  },
-
-  actions: {
-    logData() {
-      // a simple query string
-      console.log(this.getState('count')); // 0
-
-      // query string that uses dot notation
-      console.log(this.getState('data.items[1].title')); // Item two
-      console.log(this.getState('data.atts.tags').length); // 3
-      console.log(this.getState('data.atts.tags[2]')); // redux
-
-      // query object
-      const state = this.getState({
-          thirdItemTitle: 'data.items[2].title',
-          secondTag: 'data.atts.tags[2]',
-      });
-      console.log(state); // { thirdItemTitle: 'Item three', secondTag: 'react' }
-
-      // complete state object
-      console.log(this.getState());
-    },
-  },
-});
-```
-
-&nbsp;
 &nbsp;
 
 # The Configuration Object
@@ -856,21 +845,28 @@ React's [hooks](https://reactjs.org/docs/hooks-intro.html) let you use state, ex
 
 Speedux provides a set of hook APIs as an alternative to the existing [`connect()`](#connectcomponent-configuration) Higher Order Component. These APIs allow you to subscribe to the Redux store, handle and dispatch actions, without having to wrap your components in [`connect()`](#connectcomponent-configuration).
 
-Here's a quick example to demonstrate how to use them. First, you need to import `useRedux` hook then use it to get access to the other hooks. Remember that the [name](#name-string) you pass to `useRedux` hook must be unique to that component.
+Here's a quick example to demonstrate how to use them. First, you need to import `createHooks` function then use it to get access to the other hooks. Remember that the [name](#name-string) you pass to `createHooks` hook must be unique to that component. Alternatively, you can pass a [configuration object](#the-configuration-object) to `createHooks`.
 
 ```jsx
 import React from 'react';
-import { useRedux } from 'speedux';
+import { createHooks } from 'speedux';
 
-export default () => {
-  const {
+const {
     useState,
     useActions,
     useHandlers,
     useDispatch,
     useGlobalState,
-  } = useRedux('counter');
+  } = createHooks('counter');
 
+export default () => {
+  const state = useState(...);
+  const actions = useActions(...);
+  const dispatch = useDispatch();
+  const globalState = useGlobalState(...);
+
+  useHandlers(...);
+  
   return (
     <div>
       ...

@@ -391,3 +391,32 @@ export const getComponentName = (component) => {
   const functionName = component.name && `${component.name[0].toLowerCase()}${component.name.slice(1)}`;
   return displayName || functionName || null;
 };
+
+/**
+ * Deeply compares two objects and returns a boolean that specifies whether the two
+ * objects are equal
+ * @param   {Object | Array} objA First object.
+ * @param   {Object | Array} objB Second object.
+ * @return  {Boolean}             Result is true if the two objects are equal.
+ */
+export const deepCompare = (objA, objB) => {
+  const typeA = getObjectType(objA);
+  const typeB = getObjectType(objB);
+
+  if (typeA !== typeB) return false;
+
+  if (typeA === 'object' || typeA === 'array') {
+    const keys = Object.keys(objA);
+
+    for (let i = 0; i < keys.length; i += 1) {
+      const valueA = objA[keys[i]];
+      const valueB = objB[keys[i]];
+
+      if (!deepCompare(valueA, valueB)) {
+        return false;
+      }
+    }
+  }
+
+  return objA?.toString() === objB?.toString();
+};
