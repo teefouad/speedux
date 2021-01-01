@@ -1,7 +1,7 @@
 /**
  * Dependency imports.
  */
-import { useState as useReactState } from 'react';
+import { useRef, useState as useReactState } from 'react';
 import { useSelector, useDispatch as useReduxDispatch } from 'react-redux';
 
 /**
@@ -19,6 +19,50 @@ export const ERRORS = {
   MISSING_NAME: 'Function `createHooks` expects the name string as a first parameter.',
   INVALID_NAME: 'Name must be a string.',
   INVALID_CONFIG: 'Configuration must be a valid object.',
+};
+
+export const useDispatch = () => dispatch;
+
+export const useGlobalState = (queries) => {
+  const [ready, setReady] = useReactState(false);
+  if (!ready) setTimeout(() => setReady(true), 0);
+  return useSelector(() => {
+    if (!ready) return null;
+    return store.getState(queries);
+  });
+};
+
+export const useAsyncState = (generatorFunction) => {
+  const iteratorRef = useRef(null);
+  const [state, setState] = useReactState({});
+  const currentResultRef = useRef(null);
+  const nextResultRef = useRef(null);
+  const isPendingRef = useRef(false);
+  const isPromise = v => v instanceof Promise;
+  const requestUpdate = (value) => {
+    nextResultRef.current = iteratorRef.current.next(value);
+    setState({ ...state, ...currentResultRef.current.value });
+  };
+
+  if (isPendingRef.current) return state;
+  if (iteratorRef.current === null) iteratorRef.current = generatorFunction();
+
+  currentResultRef.current = nextResultRef.current ?? iteratorRef.current.next();
+
+  if (isPromise(currentResultRef.current.value)) {
+    isPendingRef.current = true;
+    currentResultRef.current.value
+      .then(requestUpdate)
+      .catch(requestUpdate)
+      .finally(() => {
+        isPendingRef.current = false;
+      });
+    return state;
+  }
+
+  if (!nextResultRef.current?.done) requestUpdate();
+
+  return { ...state, ...currentResultRef.current.value };
 };
 
 export default (arg = {}) => {
@@ -75,22 +119,13 @@ export default (arg = {}) => {
     }
   };
 
-  const useDispatch = () => dispatch;
-
-  const useGlobalState = (queries) => {
-    const [ready, setReady] = useReactState(false);
-    if (!ready) setTimeout(() => setReady(true), 0);
-    return useSelector(() => {
-      if (!ready) return null;
-      return module.getGlobalState(queries ?? config.globalState);
-    });
-  };
+  const useGlobalStateModule = queries => useGlobalState(queries ?? config.globalState);
 
   return {
     useState,
     useActions,
     useHandlers,
     useDispatch,
-    useGlobalState,
+    useGlobalState: useGlobalStateModule,
   };
 };

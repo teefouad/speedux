@@ -7,8 +7,8 @@ import {
   compose,
   combineReducers,
 } from 'redux';
-// import createSagaMiddleware from 'redux-saga';
-// import { all, call, takeEvery } from 'redux-saga/effects';
+import createSagaMiddleware from 'redux-saga';
+import { all, call, takeEvery } from 'redux-saga/effects';
 
 /**
  * Local imports.
@@ -28,11 +28,6 @@ const store = {
    * @type {Object}
    */
   reducers: {},
-
-  /**
-   * List of subscribers listening to dispatched actions
-   */
-  subscribers: {},
 
   /**
    * An object that holds saga functions to be run
@@ -73,31 +68,31 @@ const store = {
       : foo => foo;
     /* eslint-enable */
 
-    // this.sagaMiddleware = createSagaMiddleware();
-    // this.sagaEnhancer = applyMiddleware(this.sagaMiddleware);
+    this.sagaMiddleware = createSagaMiddleware();
+    this.sagaEnhancer = applyMiddleware(this.sagaMiddleware);
     this.devTools = this.devTools || compose(devToolsExtension);
 
     this.storeInstance = createReduxStore(
       this.getRootReducer(),
-      compose(...this.middlewares/* , this.sagaEnhancer */, this.devTools),
+      compose(...this.middlewares, this.sagaEnhancer, this.devTools),
     );
 
-    // function* rootSaga(action) {
-    //   const filteredSagas = Object.keys(store.sagas)
-    //     .filter((key) => {
-    //       const actionType = key.replace(/^(create:|handle:)/, '');
-    //       return actionType === action.type;
-    //     })
-    //     .map(key => call(store.sagas[key], action));
+    function* rootSaga(action) {
+      const filteredSagas = Object.keys(store.sagas)
+        .filter((key) => {
+          const actionType = key.replace(/^(create:|handle:)/, '');
+          return actionType === action.type;
+        })
+        .map(key => call(store.sagas[key], action));
 
-    //   yield all(filteredSagas);
-    // }
+      yield all(filteredSagas);
+    }
 
-    // function* rootSagaWorker() {
-    //   yield takeEvery('*', rootSaga);
-    // }
+    function* rootSagaWorker() {
+      yield takeEvery('*', rootSaga);
+    }
 
-    // this.sagaMiddleware.run(rootSagaWorker);
+    this.sagaMiddleware.run(rootSagaWorker);
 
     return this.storeInstance;
   },
@@ -133,13 +128,6 @@ const store = {
       // update cached state
       this.cachedState = newState;
 
-      // notify subscribers
-      if (this.subscribers[action.type]) {
-        this.subscribers[action.type].forEach((callback) => {
-          callback(action);
-        });
-      }
-
       // return the new state
       return newState;
     };
@@ -171,29 +159,6 @@ const store = {
   resetReducers() {
     this.reducers = {};
     this.combinedInitialState = {};
-  },
-
-  /**
-   * Subscribe to an action being dispatched.
-   * @param {String} actionType   Type of the action to listen to
-   * @param {Function} listener   Function that should be called when the action is dispatched
-   */
-  subscribe(actionType, listener) {
-    this.subscribers[actionType] = this.subscribers[actionType] ?? [];
-    if (!this.subscribers[actionType].includes(listener)) {
-      this.subscribers[actionType].push(listener);
-    }
-  },
-
-  /**
-   * Unsubscribe from an action being dispatched
-   * @param {String} actionType   Type of the action to unsubscribe from
-   * @param {Function} listener   Function that was used to subscribe
-   */
-  unsubscribe(actionType, listener) {
-    this.subscribers[actionType] = this.subscribers[actionType].filter(subscriber => (
-      subscriber !== listener
-    ));
   },
 
   /**

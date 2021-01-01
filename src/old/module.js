@@ -103,10 +103,6 @@ class Module {
       const actionType = `@@${this.name}/${actionName}`;
       const argNames = helpers.getArgNames(callback);
 
-      if (callback.toString().includes('undefined.getState(')) {
-        throw new Error(`Action '${this.name}.${name}' cannot call 'this.getState()'. Try using a normal function instead of an arrow function.`);
-      }
-
       this.actionCreators[camelCaseName] = (...args) => ({
         type: actionType,
         payload: {},
@@ -122,10 +118,6 @@ class Module {
     Object.entries(handlers).forEach(([name, callback]) => {
       let actionType = name;
       const argNames = helpers.getArgNames(callback);
-
-      if (callback.toString().includes('undefined.getState(')) {
-        throw new Error(`Action '${this.name}.${name}' cannot call 'this.getState()'. Try using a normal function instead of an arrow function.`);
-      }
 
       if (/^(.*?)\.(.*?)$/.test(actionType)) {
         const [moduleName, camelCaseName, subAction] = actionType.split('.');
@@ -248,31 +240,12 @@ class Module {
 
     return {
       ...self.config.actions,
-      getState: self.getState,
       getGlobalState: self.getGlobalState,
       isError: e => e instanceof Error,
     };
   }
 
-  getState = query => helpers.queryState(query, this.cachedState)
-
-  getGlobalState = (queries) => {
-    const globalState = { ...store.cachedState };
-    delete globalState[this.name];
-
-    if (!queries) return globalState;
-
-    if (helpers.getObjectType(queries) === 'string') {
-      return helpers.queryState(queries, globalState);
-    }
-
-    return Object
-      .entries(queries)
-      .reduce((p, [name, query]) => ({
-        ...p,
-        [name]: helpers.queryState(query, globalState),
-      }), {});
-  };
+  getGlobalState = queries => store.getState(queries);
 
   getActionTypeMatchers = (actionType) => {
     const regex = /@@(.+?)\/(.+)/;
