@@ -1,5 +1,5 @@
 /**
- * Dependency imports.
+ * Dependency imports
  */
 import {
   createStore as createReduxStore,
@@ -7,11 +7,9 @@ import {
   compose,
   combineReducers,
 } from 'redux';
-// import createSagaMiddleware from 'redux-saga';
-// import { all, call, takeEvery } from 'redux-saga/effects';
 
 /**
- * Local imports.
+ * Local imports
  */
 import * as helpers from './helpers';
 
@@ -33,11 +31,6 @@ const store = {
    * List of subscribers listening to dispatched actions
    */
   subscribers: {},
-
-  /**
-   * An object that holds saga functions to be run
-   */
-  sagas: {},
 
   /**
    * An array of middlewares to use when creating the store.
@@ -73,31 +66,12 @@ const store = {
       : foo => foo;
     /* eslint-enable */
 
-    // this.sagaMiddleware = createSagaMiddleware();
-    // this.sagaEnhancer = applyMiddleware(this.sagaMiddleware);
     this.devTools = this.devTools || compose(devToolsExtension);
 
     this.storeInstance = createReduxStore(
       this.getRootReducer(),
-      compose(...this.middlewares/* , this.sagaEnhancer */, this.devTools),
+      compose(...this.middlewares, this.devTools),
     );
-
-    // function* rootSaga(action) {
-    //   const filteredSagas = Object.keys(store.sagas)
-    //     .filter((key) => {
-    //       const actionType = key.replace(/^(create:|handle:)/, '');
-    //       return actionType === action.type;
-    //     })
-    //     .map(key => call(store.sagas[key], action));
-
-    //   yield all(filteredSagas);
-    // }
-
-    // function* rootSagaWorker() {
-    //   yield takeEvery('*', rootSaga);
-    // }
-
-    // this.sagaMiddleware.run(rootSagaWorker);
 
     return this.storeInstance;
   },
@@ -212,36 +186,11 @@ const store = {
   },
 
   /**
-   * Allows registering saga functions.
-   * @param {String}    actionType  Action type to assign the saga to
-   * @param {Function}  saga        Saga function to be run
-   */
-  useSaga(actionType, saga) {
-    this.sagas[actionType] = saga;
-  },
-
-  /**
-   * Registers a list of saga functions.
-   * @param {Object} sagas A list of saga functions to be run
-   */
-  useSagas(sagas) {
-    Object.keys(sagas).forEach(actionType => this.useSaga(actionType, sagas[actionType]));
-  },
-
-  /**
-   * Removes all registered sagas.
-   */
-  resetSagas() {
-    this.sagas = {};
-  },
-
-  /**
    * Resets the store and deletes the instance.
    */
   reset() {
     this.resetReducers();
     this.resetMiddlewares();
-    this.resetSagas();
     delete this.rootReducer;
     delete this.storeInstance;
     delete this.registeredNames;
@@ -279,7 +228,7 @@ const store = {
 
     if (this.registeredNames[name] === true) {
       const { warn } = console;
-      warn(`Duplicate name: ${name}. This name has already been used to connect another component, please use a different name.`);
+      warn(`Duplicate name: ${name}. This name has already been used, please use a different name.`);
     } else {
       store.registeredNames[name] = true;
     }

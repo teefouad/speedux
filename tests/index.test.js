@@ -1,33 +1,23 @@
 import React from 'react';
-import { render, cleanup, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/extend-expect';
 
-import {
-  Provider,
-  getStore,
-  useReducer,
-  useMiddleware,
-} from '../src';
+import { useReducer, useMiddleware } from '../src/index';
+import Provider from '../src/provider';
 import store from '../src/store';
 
-describe('Tests', () => {
+describe('index', () => {
+  beforeEach(() => {
+    store.create();
+  });
+  
   afterEach(() => {
-    cleanup();
     store.reset();
   });
 
   it('should render content through the Provider', () => {
-    render(<Provider>content</Provider>);
-    expect(screen.getByText('content')).toBeInTheDocument();
-  });
-
-  it('should warn if a store is passed to Provider', () => {
-    const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    render(<Provider />);
-    expect(spy).toHaveBeenCalledTimes(0);
-    render(<Provider store={null} />);
-    expect(spy).toHaveBeenCalledTimes(1);
-    spy.mockRestore();
+    render(<Provider>hello world</Provider>);
+    expect(screen.getByText('hello world')).toBeInTheDocument();
   });
 
   it('should be able to use a custom reducer', () => {
@@ -35,10 +25,11 @@ describe('Tests', () => {
     useReducer('test', reducer);
     render(<Provider />);
     expect(reducer).toHaveBeenCalled();
-    expect(getStore().getState()).toMatchObject({ test: { foo: 'baz' }});
+    expect(store.getInstance().getState()).toMatchObject({ test: { foo: 'baz' } });
   });
 
   it('should be able to use a custom middleware', () => {
+    store.reset();
     const middleware = jest.fn(() => next => action => next(action));
     useMiddleware(middleware);
     render(<Provider />);
