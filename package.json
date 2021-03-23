@@ -1,6 +1,6 @@
 {
   "name": "speedux",
-  "version": "5.0.2",
+  "version": "5.0.11",
   "description": "State management for React with Redux, made easier.",
   "main": "lib/index.js",
   "unpkg": "dist/speedux.js",
@@ -27,7 +27,8 @@
     "lib",
     "src",
     "dist",
-    "es"
+    "es",
+    "index.d.ts"
   ],
   "keywords": [
     "react",
@@ -87,6 +88,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.12.5",
+    "noyb": "^0.1.4",
     "react": "^17.0.1",
     "react-redux": "^7.2.2",
     "redux": "^4.0.5"

@@ -2,18 +2,8 @@
  * Dependency imports
  */
 import { useSelector } from 'react-redux';
+import { queryObject } from 'noyb';
 
-/**
- * Local imports
- */
-import { createReducer } from './create';
-import * as helpers from './helpers';
-
-export default (name, newState) => {
-  if (newState) {
-    createReducer(name, newState);
-    return newState;
-  }
-
-  return useSelector(globalState => helpers.queryState(name, globalState) ?? globalState);
-};
+export default query => useSelector(
+  globalState => queryObject(query, globalState) ?? globalState,
+);

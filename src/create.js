@@ -1,4 +1,9 @@
 /**
+ * Dependency imports
+ */
+import { getType, mergeObjects } from 'noyb';
+
+/**
  * Local imports
  */
 import store from './store';
@@ -56,7 +61,7 @@ export const createReducer = (name, initialState = {}) => {
     if (callback) {
       const callbackArgs = { action: action.args, handler: [action] }[callbackType];
       const callbackResult = action.subtype ? action.value : callback(...callbackArgs);
-      const callbackResultType = helpers.getObjectType(callbackResult);
+      const callbackResultType = getType(callbackResult);
 
       let stateFragment = {};
 
@@ -102,7 +107,7 @@ export const createReducer = (name, initialState = {}) => {
         return state;
       }
 
-      return helpers.mergeObjects(state, stateFragment);
+      return mergeObjects(state, stateFragment);
     }
 
     return state;
@@ -124,7 +129,7 @@ export default (config) => {
     handlers = {},
   } = config;
 
-  if (helpers.getObjectType(config) !== 'object') {
+  if (getType(config) !== 'object') {
     throw new Error(ERRORS.INVALID_CONFIG);
   }
 
@@ -132,7 +137,7 @@ export default (config) => {
     throw new Error(ERRORS.MISSING_NAME);
   }
 
-  if (helpers.getObjectType(name) !== 'string') {
+  if (getType(name) !== 'string') {
     throw new Error(ERRORS.INVALID_NAME);
   }
 

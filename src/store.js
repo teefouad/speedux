@@ -7,11 +7,7 @@ import {
   compose,
   combineReducers,
 } from 'redux';
-
-/**
- * Local imports
- */
-import * as helpers from './helpers';
+import { queryObject } from 'noyb';
 
 /**
  * This is not the actual store object. This is a wrapper object
@@ -207,7 +203,7 @@ const store = {
    *                                    This parameter is not required.
    */
   getState(query) {
-    return helpers.queryState(query, this.cachedState);
+    return queryObject(query, this.cachedState);
   },
 
   /**

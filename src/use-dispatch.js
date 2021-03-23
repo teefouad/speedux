@@ -1,4 +1,9 @@
 /**
+ * Dependency imports
+ */
+import { getType, deepCopy } from 'noyb';
+
+/**
  * Local imports
  */
 import store from './store';
@@ -50,10 +55,10 @@ import * as helpers from './helpers';
 export default name => (...args) => {
   let action = {};
 
-  if (helpers.getObjectType(args[0]) === 'object') {
-    action = helpers.deepCopy(args[0]);
+  if (getType(args[0]) === 'object') {
+    action = deepCopy(args[0]);
   } else
-  if (helpers.getObjectType(args[0]) === 'string') {
+  if (getType(args[0]) === 'string') {
     // set the type
     if (name) {
       action.type = `@@${name}/${helpers.toSnakeCase(args[0]).toUpperCase()}`;
