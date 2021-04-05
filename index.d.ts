@@ -5,16 +5,16 @@ declare module 'speedux' {
     [path: string]: any;
   };
 
-  declare type GlobalStateActionsList = {
-    [actionName: string]: (...args) => GlobalStateObject;
+  declare type GlobalStateActions<T> = {
+    [actionName: string]: (...args) => Partial<T>;
   };
 
-  declare type GlobalStateHandlersList = {
-    [actionType: string]: (action: Action) => GlobalStateObject;
+  declare type GlobalStateHandlers<T> = {
+    [actionType: string]: (action: Action) => Partial<T>;
   };
 
   declare type ActionDispatchers = {
-    [actionName: string]: () => void;
+    [actionName: string]: (...args) => void;
   };
 
   declare type DispatchFunction = {
@@ -25,15 +25,15 @@ declare module 'speedux' {
     (action: Action): void;
   };
 
-  declare type ReducerFunction = {
-    (state: GlobalStateObject, action: Action): GlobalStateObject;
+  declare type ReducerFunction<T> = {
+    (state: T, action: Action): T;
   };
 
   /**
    * An object that describes the global state and the actions and handlers
    * associated to it.
    */
-  declare type GlobalStateConfig = {
+  declare type GlobalStateConfig<T extends GlobalStateObject, U extends GlobalStateActions<T>> = {
     /**
      * Key that should be used to create this global state in the Redux store.
      */
@@ -41,10 +41,10 @@ declare module 'speedux' {
     /**
      * The initial value for the global state.
      */
-    state?: GlobalStateObject;
+    state?: T;
     /**
      * A list of actions that describe how this global state should be changed.
-     * 
+     *
      * Example:
      * ```
      * {
@@ -58,10 +58,10 @@ declare module 'speedux' {
      * }
      * ```
      */
-    actions?: GlobalStateActionsList;
+    actions?: U;
     /**
      * A list of handlers that describe how this global state should be changed in response to these actions.
-     * 
+     *
      * Example:
      * ```
      * {
@@ -74,34 +74,34 @@ declare module 'speedux' {
      * }
      * ```
      */
-    handlers?: GlobalStateHandlersList;
+    handlers?: U;
   };
 
   /**
    * Creates a new global state branch in the Redux store.
    * @param config An object that describes the global state and the actions and handlers associated to it.
    */
-  declare function createGlobalState(config: GlobalStateConfig): void;
+  declare function createGlobalState<T, U>(config: GlobalStateConfig<T, U>): void;
 
   /**
    * Returns a piece of global state from the store. This is a hook function and can only be used inside a component.
    * @param query Name of global state to read or a query string.
    * @returns The global state object that corresponds to the query.
    */
-  declare function useGlobalState(query: string): GlobalStateObject;
+  declare function useGlobalState(query?: string): any;
 
   /**
    * Returns a piece of global state from the store based on the provided query.
    * @param query Query string.
    * @returns The global state object that corresponds to the query.
    */
-  declare function queryGlobalState(query: string): GlobalStateObject;
+  declare function queryGlobalState(query?: string): any;
 
   /**
    * Returns a list of dispatcher functions that correspond to the configured `actions` field.
    * @param name Name of the global state to which the actions are associated.
    */
-  declare function useActions(name: string): ActionDispatchers;
+  declare function useActions<T extends ActionDispatchers>(name: string): T;
 
   /**
    * Returns a `dispatch` function which can be used to dispatch actions.
@@ -139,7 +139,7 @@ declare module 'speedux' {
    * Allows using middleware functions such as React Router middleware and others.
    * @param middleware Middleware function to use.
    */
-  declare function useMiddleware(middleware: Middleware): any;
+  declare function useMiddleware(middleware: Middleware): void;
 
   declare function Provider(props: any): any;
 

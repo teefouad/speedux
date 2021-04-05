@@ -65,9 +65,7 @@ export const createReducer = (name, initialState = {}) => {
 
       let stateFragment = {};
 
-      if (callbackResultType === 'object') stateFragment = callbackResult;
-      if (callbackResultType === 'function') stateFragment = callbackResult(state);
-      if (callbackResultType === 'generator') {
+      if (callbackResult && typeof callbackResult[Symbol.iterator] === 'function' && typeof callbackResult.next === 'function') {
         const dispatchSubAction = (type, value, cb) => {
           requestAnimationFrame(() => {
             const dispatch = useDispatch();
@@ -105,6 +103,14 @@ export const createReducer = (name, initialState = {}) => {
         execute();
 
         return state;
+      }
+
+      if (callbackResultType === 'object') {
+        stateFragment = callbackResult;
+      }
+
+      if (callbackResultType === 'function') {
+        stateFragment = callbackResult(state);
       }
 
       return mergeObjects(state, stateFragment);

@@ -1,6 +1,6 @@
 {
   "name": "speedux",
-  "version": "5.0.11",
+  "version": "5.0.14",
   "description": "State management for React with Redux, made easier.",
   "main": "lib/index.js",
   "unpkg": "dist/speedux.js",
@@ -47,15 +47,6 @@
     "url": "https://github.com/teefouad/speedux/issues"
   },
   "homepage": "https://github.com/teefouad/speedux#readme",
-  "peerDependencies": {
-    "react": "^16.8.3 || ^17",
-    "react-redux": "^7"
-  },
-  "peerDependenciesMeta": {
-    "react-dom": {
-      "optional": true
-    }
-  },
   "devDependencies": {
     "@babel/cli": "^7.2.3",
     "@babel/core": "^7.3.4",
