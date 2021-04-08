@@ -190,6 +190,7 @@ const store = {
     delete this.rootReducer;
     delete this.storeInstance;
     delete this.registeredNames;
+    this.cachedState = {};
   },
 
   /**

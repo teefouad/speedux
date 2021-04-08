@@ -41,6 +41,10 @@ export const createReducer = (name, initialState = {}) => {
       } else {
         [actionParts[1], actionParts[2]] = action.type.split('/');
       }
+
+      if (actionParts[2] !== 'UPDATE') {
+        return state;
+      }
     } else
     if (/@@(.+?)\/(.+)/.test(action.type)) {
       actionParts[0] = action.type.replace(/^@@|\/.*?$/g, '');
