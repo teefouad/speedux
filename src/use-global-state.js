@@ -5,5 +5,5 @@ import { useSelector } from 'react-redux';
 import { queryObject } from 'noyb';
 
 export default query => useSelector(
-  globalState => queryObject(query, globalState) ?? globalState,
+  globalState => (query ? queryObject(query, globalState) : globalState),
 );
