@@ -119,8 +119,9 @@ declare module 'speedux' {
   /**
    * Allows consuming a generator function, similar to how async actions work.
    * @param generatorFunction Generator function to consume.
+   * @param defaultValue Default return value.
    */
-  declare function useGenerator(generatorFunction: GeneratorFunction): any;
+  declare function useGenerator(generatorFunction: GeneratorFunction, defaultValue: any): any;
 
   /**
    * Allows registering a reducer function that can listen to any action

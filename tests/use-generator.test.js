@@ -63,13 +63,12 @@ describe('use-generator', () => {
   it('should handle errors in a generator', async () => {
     const Foo = () => {
       const [data, exec] = useGenerator(function* () {
-        yield { error: false };
         const response = yield Promise.reject(new Error('whoops'));
         yield { error: response instanceof Error };
-      });
+      }, { error: false });
       return (
         <div>
-          <div>{data?.error ? 'has error' : ''}</div>
+          <div>{data.error ? 'has error' : ''}</div>
           <button onClick={exec}>
             Click
           </button>
