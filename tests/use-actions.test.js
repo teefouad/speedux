@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/extend-expect';
 import userEvent from '@testing-library/user-event';
@@ -566,6 +566,7 @@ describe('use-actions', () => {
     userEvent.click(screen.getByText('Click'));
     expect(await screen.findByText('has error')).toBeInTheDocument();
   });
+
   it('should handle errors in an async handler by returning a value', async () => {
     const faultyFetchData = () => Promise.reject(new Error());
     createGlobalState({
@@ -598,5 +599,40 @@ describe('use-actions', () => {
     expect(screen.getByText('no data')).toBeInTheDocument();
     userEvent.click(screen.getByText('Click'));
     expect(await screen.findByText('request failed')).toBeInTheDocument();
+  });
+
+  it('should listen to a dispatched action', async () => {
+    createGlobalState({
+      name: 'counter',
+      state: { count: 1 },
+      actions: {
+        * increaseCount() {
+          const count = yield Promise.resolve(2);
+          yield { count };
+        },
+      },
+    });
+
+    const Foo = () => {
+      const [status, setStatus] = useState('start');
+      const actions = useActions('counter');
+      
+      return (
+        <>
+          <div>{status}</div>
+          <button onClick={() => {
+            actions.increaseCount().then(() => {
+              setStatus('finish');
+            });
+          }}>
+            Click
+          </button>
+        </>
+      );
+    }
+    render(<Provider><Foo /></Provider>);
+    expect(screen.getByText('start')).toBeInTheDocument();
+    userEvent.click(screen.getByText('Click'));
+    expect(await screen.findByText('finish')).toBeInTheDocument();
   });
 });
