@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/extend-expect';
 import userEvent from '@testing-library/user-event';
@@ -69,7 +69,9 @@ describe('use-generator', () => {
       return (
         <div>
           <div>{data.error ? 'has error' : ''}</div>
-          <button onClick={exec}>
+          <button onClick={() => {
+            exec().catch(() => null);
+          }}>
             Click
           </button>
         </div>
@@ -105,5 +107,62 @@ describe('use-generator', () => {
     expect(screen.getByText('no data')).toBeInTheDocument();
     userEvent.click(screen.getByText('Click'));
     expect(await screen.findByText('request failed')).toBeInTheDocument();
+  });
+
+  it('should resolve the returned promise upon completion', async () => {
+    const Foo = () => {
+      const [status, setStatus] = useState('start');
+      const [, exec] = useGenerator(function* () {
+        yield 0;
+        const v = yield Promise.resolve(10);
+        yield v;
+      });
+      const onClick = async () => {
+        await exec();
+        setStatus('finish');
+      };
+      return (
+        <div>
+          <div>({status})</div>
+          <button onClick={onClick}>
+            Click
+          </button>
+        </div>
+      );
+    };
+    render(<Provider><Foo /></Provider>);
+    expect(screen.getByText('(start)')).toBeInTheDocument();
+    userEvent.click(screen.getByText('Click'));
+    expect(await screen.findByText('(finish)')).toBeInTheDocument();
+  });
+
+  it('should reject the returned promise upon error', async () => {
+    const Foo = () => {
+      const [status, setStatus] = useState('start');
+      const [, exec] = useGenerator(function* () {
+        yield 0;
+        const v = yield Promise.reject('Oops');
+        yield v;
+      });
+      const onClick = () => {
+        exec().then(() => {
+          setStatus('finish');
+        }).catch(() => {
+          setStatus('failed');
+        });
+      };
+      return (
+        <div>
+          <div>({status})</div>
+          <button onClick={onClick}>
+            Click
+          </button>
+        </div>
+      );
+    };
+    render(<Provider><Foo /></Provider>);
+    expect(screen.getByText('(start)')).toBeInTheDocument();
+    userEvent.click(screen.getByText('Click'));
+    expect(await screen.findByText('(failed)')).toBeInTheDocument();
   });
 });
