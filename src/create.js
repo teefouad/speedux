@@ -42,7 +42,7 @@ export const createReducer = (name, initialState = {}) => {
         [actionParts[1], actionParts[2]] = action.type.split('/');
       }
 
-      if (actionParts[2] !== 'UPDATE') {
+      if (actionParts[2] !== 'UPDATE' && actionParts[2] !== 'RESOLVE') {
         return state;
       }
     } else
