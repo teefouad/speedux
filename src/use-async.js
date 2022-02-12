@@ -4,16 +4,20 @@
 import { useRef, useEffect, useState } from 'react';
 import { getType, mergeObjects } from 'noyb';
 
-export default (generatorFunction, defaultValue) => {
-  const data = useRef(defaultValue);
-  const nextValue = useRef();
+/**
+ * useAsync
+ */
+export default (generatorFunction, initialState) => {
+  const state = useRef(initialState);
+  const argsRef = useRef([]);
   const iterator = useRef();
   const hasError = useRef(false);
   const promiseResolve = useRef();
   const promiseReject = useRef();
+  const nextValue = useRef();
   const [nextResult, setNextResult] = useState();
 
-  const execute = (...args) => {
+  const iterate = (...args) => {
     if (iterator.current === undefined) {
       iterator.current = generatorFunction(...args);
     }
@@ -28,7 +32,7 @@ export default (generatorFunction, defaultValue) => {
           promiseReject.current(hasError.current);
         } else
         if (promiseResolve.current) {
-          promiseResolve.current(data.current);
+          promiseResolve.current(state.current);
         }
 
         iterator.current = undefined;
@@ -43,23 +47,39 @@ export default (generatorFunction, defaultValue) => {
         hasError.current = err;
       }).finally(checkForNextResult);
     } else {
-      if (getType(data.current) === 'object') {
-        data.current = mergeObjects(data.current, next.value ?? {});
+      if (getType(state.current) === 'object') {
+        state.current = mergeObjects(state.current, next.value ?? {});
       } else {
-        data.current = next.value;
+        state.current = next.value;
       }
 
       checkForNextResult();
     }
   };
 
+  const cancel = () => {
+    if (iterator.current) iterator.current.return();
+  };
+
+  const execute = (...args) => {
+    cancel();
+
+    argsRef.current = args;
+
+    return new Promise((resolve, reject) => {
+      promiseResolve.current = resolve;
+      promiseReject.current = reject;
+      iterate(...argsRef.current);
+    });
+  };
+
   useEffect(() => {
-    if (nextResult) execute();
+    if (nextResult) iterate(...argsRef.current);
   }, [nextResult]);
 
-  return [data.current, (...args) => new Promise((resolve, reject) => {
-    promiseResolve.current = resolve;
-    promiseReject.current = reject;
-    execute(...args);
-  })];
+  return [
+    state.current,
+    execute,
+    cancel,
+  ];
 };
