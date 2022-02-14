@@ -4,7 +4,8 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom/extend-expect';
 
 import useAsync from '../src/use-async';
-import { delay } from './helpers';
+
+const delay = (timeout, value) => new Promise(resolve => setTimeout(resolve, timeout, value));
 
 describe('useAsync', () => {
 
