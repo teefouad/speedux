@@ -3,19 +3,25 @@ import { Store, Action, Middleware } from 'redux';
 declare module 'speedux' {
   export type GlobalStateUpdate<T> = Partial<T> | ((prevState: T) => Partial<T>);
 
+  export type GlobalStateUpdater<T> = (...args) => GlobalStateUpdate<T>;
+
+  export type Yieldable<T> = GlobalStateUpdate<T> | Promise<unknown>;
+
+  export type AsyncGlobalStateUpdater<T> = (...args) => Generator<Yieldable<T>, void, unknown>;
+
   export type GlobalStateObject = {
     [path: string]: any;
   };
 
-  export type GlobalStateActions<T> = {
-    [actionName: string]: (...args) => GlobalStateUpdate<T>;
+  export type GlobalStateActions<T, U> = {
+    [Property in keyof U]: U[Property] extends (...args: any[]) => Promise<void> ? AsyncGlobalStateUpdater<T> : GlobalStateUpdater<T>;
   };
 
   /**
    * An object that describes the global state and the actions and handlers
    * associated to it.
    */
-  export type GlobalStateConfig<T extends GlobalStateObject, U extends GlobalStateActions<T>> = {
+  export type GlobalStateConfig<TState extends GlobalStateObject, TActions> = {
     /**
      * Key that should be used to create this global state in the Redux store.
      */
@@ -23,7 +29,7 @@ declare module 'speedux' {
     /**
      * The initial value for the global state.
      */
-    state?: T;
+    state?: TState;
     /**
      * A list of actions that describe how this global state should be changed.
      *
@@ -40,7 +46,7 @@ declare module 'speedux' {
      * }
      * ```
      */
-    actions?: U;
+    actions?: GlobalStateActions<TState, TActions>;
     /**
      * A list of handlers that describe how this global state should be changed in response to these actions.
      *
@@ -57,7 +63,7 @@ declare module 'speedux' {
      * ```
      */
     handlers?: {
-      [actionType: string]: (action: Action) => GlobalStateUpdate<T>;
+      [actionType: string]: (action: Action) => GlobalStateUpdate<TState>;
     };
   };
 
@@ -68,8 +74,6 @@ declare module 'speedux' {
   export type HandlerCallback = {
     (action: Action): void;
   };
-
-  export type Yieldable<T> = T | Promise<unknown> | unknown;
 
   export type ExecuteFunction<T> = (...args) => Promise<T>;
 
@@ -124,7 +128,7 @@ declare module 'speedux' {
    * @param initialState Initial state value.
    */
   export function useAsync<T>(
-    generatorFunction: (...args) => Generator<Yieldable<T>, void, unknown>,
+    generatorFunction: AsyncStateFunction,
     initialState?: T,
   ): [T, ExecuteFunction<T>, CancelFunction];
 

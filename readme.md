@@ -24,6 +24,7 @@ State management for React with Redux, made easier.
 - [Middlewares](#middlewares)  
 - [API](#api)  
 - [The Configuration Object](#the-configuration-object)  
+- [Typescript](#typescript)  
 - [License](#license)
 
 &nbsp;
@@ -90,11 +91,11 @@ createGlobalState({
   },
 
   actions: {
-    increaseCount: () => (currentState) => ({
-      count: currentState.count + 1,
+    increaseCount: () => (prevState) => ({
+      count: prevState.count + 1,
     }),
-    decreaseCount: () => (currentState) => ({
-      count: currentState.count - 1,
+    decreaseCount: () => (prevState) => ({
+      count: prevState.count - 1,
     }),
     resetCount: () => ({
       count: 0,
@@ -757,6 +758,73 @@ A list of all the external actions that may affect the global state. Provide the
 The handler function will always receive the action object as a single parameter and should return an object that specifies the state keys that need to be updated and their new values.
 
 See [Listening to Actions](#listening-to-actions) for examples.
+
+&nbsp;
+&nbsp;
+
+# Typescript
+
+Inside `counter-state.ts`:
+
+```js
+import { createGlobalState } from 'speedux';
+
+export interface CounterState {
+  count: number;
+}
+
+export interface CounterActions {
+  increaseCount: () => void;
+  decreaseCount: () => void;
+  setCount: (value: number) => void;
+  fetchCount: () => Promise<void>;
+}
+
+createGlobalState<CounterState, CounterActions>({
+  name: 'counter',
+
+  state: {
+    count: 0,
+  },
+
+  actions: {
+    increaseCount: () => (prevState) => ({
+      count: prevState.count + 1,
+    }),
+    decreaseCount: () => (prevState) => ({
+      count: prevState.count - 1,
+    }),
+    setCount: (value) => ({
+      count: value,
+    }),
+    fetchData: function* () {
+      // Async action
+      ...
+    },
+  },
+});
+```
+
+Inside the component file:
+
+```jsx
+import React from 'react';
+import { useGlobalState, useActions } from 'speedux';
+import { CounterState, CounterActions } from './counter-state';
+
+const Counter = () => {
+  const counterState = useGlobalState<CounterState>('counter');
+  const counterActions = useActions<CounterActions>('counter');
+  
+  return (
+    <div>
+      ...
+    </div>
+  );
+};
+
+export default Counter;
+```
 
 &nbsp;
 &nbsp;
