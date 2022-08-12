@@ -87,7 +87,10 @@ declare module 'speedux' {
    * Creates a new global state branch in the Redux store.
    * @param config An object that describes the global state and the actions and handlers associated to it.
    */
-  export function createGlobalState<T, U>(config: GlobalStateConfig<T, U>): void;
+  export function createGlobalState<T, U>(config: GlobalStateConfig<T, U>): {
+    useState: (query?: string) => T,
+    useActions: () => U,
+  };
 
   /**
    * Returns a piece of global state from the store. This is a hook function and can only be used inside a component.

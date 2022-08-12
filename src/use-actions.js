@@ -1,7 +1,7 @@
 /**
  * Local imports
  */
-import { lookbook } from './create';
+import lookbook from './lookbook';
 import store from './store';
 import useDispatch from './use-dispatch';
 import * as helpers from './helpers';

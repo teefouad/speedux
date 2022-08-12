@@ -8,14 +8,10 @@ import { getType, mergeObjects } from 'noyb';
  */
 import store from './store';
 import useDispatch from './use-dispatch';
+import useGlobalState from './use-global-state';
+import useActions from './use-actions';
+import lookbook from './lookbook';
 import * as helpers from './helpers';
-
-/**
- * An object that maps actions to their respective handlers
- * as described in configuration objects which are passed to
- * the createGlobalState function.
- */
-export const lookbook = { actions: {}, handlers: {} };
 
 /**
  * Error messages map
@@ -157,4 +153,9 @@ export default (config) => {
   lookbook.handlers[name] = handlers;
 
   createReducer(name, state);
+
+  return {
+    useState: query => useGlobalState(query ? `${name}.${query}` : name),
+    useActions: () => useActions(name),
+  };
 };
