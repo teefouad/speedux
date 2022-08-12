@@ -780,7 +780,7 @@ export interface CounterActions {
   fetchCount: () => Promise<void>;
 }
 
-createGlobalState<CounterState, CounterActions>({
+export default createGlobalState<CounterState, CounterActions>({
   name: 'counter',
 
   state: {
@@ -815,6 +815,26 @@ import { CounterState, CounterActions } from './counter-state';
 const Counter = () => {
   const counterState = useGlobalState<CounterState>('counter');
   const counterActions = useActions<CounterActions>('counter');
+  
+  return (
+    <div>
+      ...
+    </div>
+  );
+};
+
+export default Counter;
+```
+
+Alternatively, you can do this:
+
+```jsx
+import React from 'react';
+import counterStateManager from './counter-state';
+
+const Counter = () => {
+  const counterState = counterStateManager.useState();
+  const counterActions = counterStateManager.useActions();
   
   return (
     <div>
