@@ -63,7 +63,7 @@ declare module 'speedux' {
      * ```
      */
     handlers?: {
-      [actionType: string]: (action: Action) => GlobalStateUpdate<TState>;
+      [actionType: string]: AsyncGlobalStateUpdater<TState> | ((action: Action) => GlobalStateUpdate<TState>);
     };
   };
 

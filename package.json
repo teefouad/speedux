@@ -1,6 +1,6 @@
 {
   "name": "speedux",
-  "version": "5.1.5",
+  "version": "5.1.6",
   "description": "State management for React with Redux, made easier.",
   "main": "lib/index.js",
   "unpkg": "dist/speedux.js",
